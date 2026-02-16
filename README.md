@@ -45,7 +45,7 @@ Ao iniciar:
 3. Veja sugestões de artigos no painel inferior.
 4. Opcionalmente use filtros (marca/modelo/tags) e clique em **Buscar base de conhecimento**.
 
-## Build com PyInstaller
+## Build local com PyInstaller
 
 Instale:
 
@@ -62,6 +62,25 @@ pyinstaller --noconfirm --onefile --windowed --name "TechVaultDeviceDetector" ap
 Saída em:
 
 - `dist/TechVaultDeviceDetector.exe`
+
+## Build e distribuição via GitHub (mais fácil para acesso)
+
+> Este app **não roda no navegador/GitHub Pages**, pois precisa acessar USB local (`fastboot`/VID/PID).  
+> O caminho ideal no GitHub é gerar o `.exe` automaticamente e baixar pronto em **Artifacts** ou **Releases**.
+
+Foi adicionado workflow em `.github/workflows/build-windows.yml` com dois modos:
+
+1. **Manual (`workflow_dispatch`)**
+   - Vá em **Actions** → **Build Windows Executable** → **Run workflow**.
+   - Ao finalizar, baixe o executável em **Artifacts** (`TechVaultDeviceDetector-windows`).
+
+2. **Por tag de versão (`v*`)**
+   - Crie e envie uma tag, por exemplo:
+     ```bash
+     git tag v1.0.0
+     git push origin v1.0.0
+     ```
+   - O workflow compila no Windows e publica `TechVaultDeviceDetector.exe` na **Release** da tag.
 
 ## Banco de dados
 
