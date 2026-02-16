@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Atendimento Técnico</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Painel de Atendimento</h1>
+      <p>Centralize suas ferramentas e fluxo de suporte em um só lugar.</p>
+    </div>
+    <div class="clock" id="clock" aria-live="polite"></div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Ferramentas Rápidas</h2>
+      <div class="tool-grid" id="toolGrid"></div>
+      <button id="addToolBtn" class="secondary">+ Adicionar atalho</button>
+    </section>
+
+    <section class="card">
+      <h2>Checklist de Atendimento</h2>
+      <ul class="checklist" id="checklist"></ul>
+      <div class="inline-actions">
+        <input id="newTaskInput" type="text" placeholder="Nova etapa" maxlength="80" />
+        <button id="addTaskBtn" class="secondary">Adicionar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Mensagens Prontas</h2>
+      <div id="templateList" class="templates"></div>
+      <small>Clique em “Copiar” para usar no seu chat de suporte.</small>
+    </section>
+
+    <section class="card card-wide">
+      <h2>Ordem de Serviço</h2>
+      <form id="serviceOrderForm" class="ticket-form">
+        <input id="osClienteInput" type="text" placeholder="Nome do cliente" required />
+        <input id="osServicoInput" type="text" placeholder="Serviço realizado" required />
+        <input id="osValorInput" type="number" min="0" step="0.01" placeholder="Valor cobrado (R$)" required />
+        <button type="submit">Salvar OS</button>
+      </form>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Serviço</th>
+            <th>Valor</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody id="serviceOrderTable"></tbody>
+      </table>
+
+      <p class="total-value">Total cobrado no dia: <strong id="totalBilled">R$ 0,00</strong></p>
+    </section>
+  </main>
+
+  <dialog id="toolDialog">
+    <form method="dialog" id="toolForm">
+      <h3>Novo atalho</h3>
+      <label>
+        Nome
+        <input id="toolName" type="text" required maxlength="30" />
+      </label>
+      <label>
+        Link
+        <input id="toolUrl" type="url" required placeholder="https://..." />
+      </label>
+      <menu>
+        <button value="cancel" class="secondary">Cancelar</button>
+        <button value="default">Salvar</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
