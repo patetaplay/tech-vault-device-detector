@@ -8,6 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 API_URL_TEMPLATE = "https://api.github.com/repos/{repo}/releases/latest"
+PLACEHOLDER_REPO_VALUES = {
+    "SEU_USUARIO/tech-vault-device-detector",
+    "usuario/repositorio",
+    "owner/repo",
+}
 
 
 @dataclass
@@ -22,6 +27,11 @@ class UpdateInfo:
     error: str | None = None
 
 
+def is_update_repo_configured(repo_slug: str) -> bool:
+    value = (repo_slug or "").strip()
+    return bool(value and "/" in value and value not in PLACEHOLDER_REPO_VALUES)
+
+
 def _normalize_version(version: str) -> tuple[int, ...]:
     cleaned = version.strip().lower().removeprefix("v")
     parts = re.findall(r"\d+", cleaned)
@@ -33,11 +43,14 @@ def _is_newer(current: str, latest: str) -> bool:
 
 
 def check_for_updates(repo_slug: str, current_version: str) -> UpdateInfo:
-    if not repo_slug or "/" not in repo_slug:
+    if not is_update_repo_configured(repo_slug):
         return UpdateInfo(
             available=False,
             current_version=current_version,
-            error="Repositório de update não configurado. Use o formato usuario/repositorio.",
+            error=(
+                "Atualização não configurada. Em app.py, defina UPDATE_REPO com "
+                "'usuario/repositorio' do seu projeto no GitHub."
+            ),
         )
 
     api_url = API_URL_TEMPLATE.format(repo=repo_slug)
@@ -54,6 +67,15 @@ def check_for_updates(repo_slug: str, current_version: str) -> UpdateInfo:
         with urllib.request.urlopen(req, timeout=12) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as err:
+        if err.code == 404:
+            return UpdateInfo(
+                False,
+                current_version,
+                error=(
+                    "Release não encontrada (404). Verifique se o UPDATE_REPO está correto e "
+                    "se existe release publicada no GitHub (tag vX.Y.Z)."
+                ),
+            )
         return UpdateInfo(False, current_version, error=f"Erro HTTP ao buscar update: {err.code}")
     except urllib.error.URLError as err:
         return UpdateInfo(False, current_version, error=f"Sem conexão para update: {err.reason}")

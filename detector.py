@@ -49,11 +49,11 @@ class DetectionResult:
 
 
 USB_MODE_HINTS: dict[tuple[str, str], dict[str, str]] = {
-    ("18D1", "4EE0"): {"mode": "fastboot", "brand": "Google", "details": "Android Bootloader Interface"},
+    ("18D1", "4EE0"): {"mode": "fastboot", "brand": "Google", "details": "Android Bootloader Interface (USB hint)"},
     ("04E8", "685D"): {"mode": "download-mode", "brand": "Samsung", "details": "Samsung Download Mode"},
     ("05C6", "9008"): {"mode": "edl-9008", "brand": "Qualcomm", "details": "HS-USB QDLoader 9008"},
-    ("2717", "FF68"): {"mode": "fastboot", "brand": "Xiaomi", "details": "Xiaomi Fastboot"},
-    ("22B8", "2E80"): {"mode": "fastboot", "brand": "Motorola", "details": "Motorola Fastboot"},
+    ("2717", "FF68"): {"mode": "fastboot", "brand": "Xiaomi", "details": "Xiaomi Fastboot (USB hint)"},
+    ("22B8", "2E80"): {"mode": "fastboot", "brand": "Motorola", "details": "Motorola Fastboot (USB hint)"},
 }
 
 

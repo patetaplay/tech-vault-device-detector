@@ -49,10 +49,20 @@ O app agora tem:
 No arquivo `app.py`, ajuste a constante:
 
 ```python
-UPDATE_REPO = "SEU_USUARIO/tech-vault-device-detector"
+UPDATE_REPO = "seu-usuario/tech-vault-device-detector"
 ```
 
 Troque para o seu repositório real no GitHub (formato `usuario/repositorio`).
+
+
+### Erro 404 no update
+Se aparecer **"Erro HTTP ao buscar update: 404"**, normalmente significa:
+- `UPDATE_REPO` está com valor placeholder/incorreto, ou
+- ainda não existe release publicada no repositório.
+
+Comportamento novo do app:
+- se `UPDATE_REPO` não estiver configurado, ele não tenta update automático no startup;
+- no clique manual de update, ele mostra instrução de configuração em vez de erro técnico.
 
 ### Fluxo de update
 1. O app consulta `releases/latest` da API do GitHub.
@@ -117,3 +127,14 @@ Workflow em `.github/workflows/build-windows.yml`:
   - `knowledge_articles`
 
 A base de artigos é semeada automaticamente na primeira execução.
+
+
+## Observação sobre fastboot com dados vazios
+
+Quando aparecer algo como `modo=fastboot` com SN/IMEI/modelo vazios e apenas `vid/pid`, isso indica que o app pegou apenas o **hint USB** do bootloader.
+
+Para detalhar (SN/modelo/produto):
+- instale o driver fastboot correto (Motorola Device Manager/driver USB),
+- valide no terminal: `fastboot devices`,
+- depois execute a detecção novamente.
+

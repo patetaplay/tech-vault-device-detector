@@ -7,9 +7,9 @@ from tkinter import messagebox, ttk
 
 from database import init_db, save_detection, search_articles
 from detector import DetectionResult, detect_adb_devices, detect_fastboot_devices, detect_usb_modes
-from updater import check_for_updates, download_update
+from updater import check_for_updates, download_update, is_update_repo_configured
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 UPDATE_REPO = "SEU_USUARIO/tech-vault-device-detector"
 
 
@@ -152,9 +152,19 @@ class DeviceDetectorApp(tk.Tk):
         self.kb_text.insert(tk.END, content)
 
     def check_updates_on_startup(self) -> None:
+        if not is_update_repo_configured(UPDATE_REPO):
+            self.status_var.set("Update automático desativado (configure UPDATE_REPO no app.py).")
+            return
         self._check_updates(interactive=False)
 
     def check_updates_manual(self) -> None:
+        if not is_update_repo_configured(UPDATE_REPO):
+            messagebox.showinfo(
+                "Atualização",
+                "Configuração pendente. Edite app.py e defina UPDATE_REPO = 'usuario/repositorio'.",
+            )
+            self.status_var.set("Update não configurado.")
+            return
         self._check_updates(interactive=True)
 
     def _check_updates(self, interactive: bool) -> None:
@@ -237,9 +247,18 @@ class DeviceDetectorApp(tk.Tk):
             self._append_detection(
                 f"[{idx}] modo={result.mode} marca={result.brand or '-'} modelo={result.model or '-'} produto={result.product or '-'}"
             )
-            self._append_detection(
-                f"     serial={result.serial_number or result.identifier or '-'} imei={result.imei or '-'} cpu={result.cpu or '-'} ram={result.ram or '-'} storage={result.storage or '-'} vid={result.vid or '-'} pid={result.pid or '-'}"
+
+            details_line = (
+                f"     serial={result.serial_number or result.identifier or '-'} imei={result.imei or '-'} "
+                f"cpu={result.cpu or '-'} ram={result.ram or '-'} storage={result.storage or '-'} "
+                f"vid={result.vid or '-'} pid={result.pid or '-'}"
             )
+            self._append_detection(details_line)
+
+            if result.mode == "fastboot" and not (result.serial_number or result.identifier):
+                self._append_detection(
+                    "     Obs: somente hint USB detectado. Instale driver fastboot Motorola e valide 'fastboot devices' para detalhes completos."
+                )
 
             tags = infer_tags_from_detection(result)
             articles = suggest_articles(result, tags)
