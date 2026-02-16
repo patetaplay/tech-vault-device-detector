@@ -20,6 +20,11 @@ class DetectionResult:
     brand: str | None = None
     model: str | None = None
     product: str | None = None
+    serial_number: str | None = None
+    imei: str | None = None
+    cpu: str | None = None
+    ram: str | None = None
+    storage: str | None = None
     vid: str | None = None
     pid: str | None = None
     details: str | None = None
@@ -32,6 +37,11 @@ class DetectionResult:
             "brand": self.brand,
             "model": self.model,
             "product": self.product,
+            "serial_number": self.serial_number,
+            "imei": self.imei,
+            "cpu": self.cpu,
+            "ram": self.ram,
+            "storage": self.storage,
             "vid": self.vid,
             "pid": self.pid,
             "details": self.details,
@@ -47,55 +57,196 @@ USB_MODE_HINTS: dict[tuple[str, str], dict[str, str]] = {
 }
 
 
-def detect_fastboot_devices(timeout: int = 8) -> list[DetectionResult]:
-    """Detects devices available via fastboot and enriches with getvar product/model."""
-    results: list[DetectionResult] = []
+BRAND_HINTS = {
+    "moto": "Motorola",
+    "motorola": "Motorola",
+    "samsung": "Samsung",
+    "xiaomi": "Xiaomi",
+    "redmi": "Xiaomi",
+    "poco": "Xiaomi",
+    "google": "Google",
+    "pixel": "Google",
+    "oneplus": "OnePlus",
+}
 
+
+def _run_command(cmd: list[str], timeout: int = 8) -> str:
     try:
-        cmd = ["fastboot", "devices"]
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
-    except FileNotFoundError:
-        return []
-    except subprocess.SubprocessError:
-        return []
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return ""
+    return f"{proc.stdout}\n{proc.stderr}"
 
-    for line in proc.stdout.splitlines():
+
+def _parse_key_values(raw_output: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in raw_output.splitlines():
+        cleaned = line.strip()
+        cleaned = cleaned.replace("(bootloader)", "").strip()
+        if ":" not in cleaned:
+            continue
+        key, value = cleaned.split(":", 1)
+        key = key.strip().lower()
+        if not key:
+            continue
+        values[key] = value.strip()
+    return values
+
+
+def _infer_brand(*candidates: str | None) -> str | None:
+    combined = " ".join(value.lower() for value in candidates if value)
+    for token, brand in BRAND_HINTS.items():
+        if token in combined:
+            return brand
+    return None
+
+
+def _extract_imei(*candidates: str | None) -> str | None:
+    for value in candidates:
+        if not value:
+            continue
+        match = re.search(r"\b\d{14,17}\b", value)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _format_gb_from_kb(kb_value: str | None) -> str | None:
+    if not kb_value:
+        return None
+    digits = re.sub(r"[^0-9]", "", kb_value)
+    if not digits:
+        return None
+    kb = int(digits)
+    gb = kb / (1024 * 1024)
+    return f"{gb:.1f} GB"
+
+
+def detect_fastboot_devices(timeout: int = 8) -> list[DetectionResult]:
+    """Detects devices available via fastboot and enriches with getvar details."""
+    results: list[DetectionResult] = []
+    fastboot_devices_out = _run_command(["fastboot", "devices"], timeout=timeout)
+
+    for line in fastboot_devices_out.splitlines():
         if not line.strip():
             continue
         serial = line.split()[0]
 
-        product = _get_fastboot_var(serial, "product", timeout)
-        model = _get_fastboot_var(serial, "model", timeout)
+        vars_raw = _run_command(["fastboot", "-s", serial, "getvar", "all"], timeout=timeout)
+        vars_map = _parse_key_values(vars_raw)
+
+        model = vars_map.get("model") or vars_map.get("sku")
+        product = vars_map.get("product")
+        serial_number = vars_map.get("serialno") or vars_map.get("serial-number") or serial
+        imei = _extract_imei(
+            vars_map.get("imei"),
+            vars_map.get("imei1"),
+            vars_map.get("meid"),
+        )
+        brand = _infer_brand(vars_map.get("brand"), model, product)
 
         result = DetectionResult(
             mode="fastboot",
             identifier=serial,
-            product=product,
+            brand=brand,
             model=model,
-            details="Detectado via fastboot devices/getvar",
+            product=product,
+            serial_number=serial_number,
+            imei=imei,
+            cpu=vars_map.get("cpu") or vars_map.get("soc") or vars_map.get("chipname"),
+            ram=vars_map.get("ram") or vars_map.get("memory"),
+            storage=vars_map.get("storage") or vars_map.get("ufs") or vars_map.get("emmc"),
+            details="Detectado via fastboot devices/getvar all",
         )
         results.append(result)
 
     return results
 
 
-def _get_fastboot_var(serial: str, var_name: str, timeout: int) -> str | None:
-    try:
-        proc = subprocess.run(
-            ["fastboot", "-s", serial, "getvar", var_name],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return None
+def detect_adb_devices(timeout: int = 8) -> list[DetectionResult]:
+    """Detects online ADB devices and collects rich hardware/software details when available."""
+    results: list[DetectionResult] = []
+    adb_out = _run_command(["adb", "devices", "-l"], timeout=timeout)
 
-    combined = f"{proc.stdout}\n{proc.stderr}"
-    pattern = re.compile(rf"{re.escape(var_name)}\s*:\s*(.+)", flags=re.IGNORECASE)
-    match = pattern.search(combined)
-    if match:
-        return match.group(1).strip()
+    for line in adb_out.splitlines():
+        cleaned = line.strip()
+        if not cleaned or cleaned.startswith("List of devices"):
+            continue
+        parts = cleaned.split()
+        if len(parts) < 2 or parts[1] != "device":
+            continue
+
+        serial = parts[0]
+        getprop_raw = _run_command(["adb", "-s", serial, "shell", "getprop"], timeout=timeout)
+        props = _parse_getprop(getprop_raw)
+
+        brand = props.get("ro.product.brand") or _infer_brand(props.get("ro.product.model"), props.get("ro.product.device"))
+        model = props.get("ro.product.model")
+        product = props.get("ro.product.device")
+        serial_number = props.get("ro.serialno") or serial
+
+        cpu = props.get("ro.soc.model") or props.get("ro.board.platform") or props.get("ro.hardware")
+        ram = _detect_adb_ram(serial, timeout=timeout)
+        storage = _detect_adb_storage(serial, timeout=timeout)
+        imei = _extract_imei(
+            props.get("persist.radio.imei"),
+            props.get("persist.radio.imei1"),
+            _run_command(["adb", "-s", serial, "shell", "service", "call", "iphonesubinfo", "1"], timeout=timeout),
+        )
+
+        results.append(
+            DetectionResult(
+                mode="adb",
+                identifier=serial,
+                brand=brand,
+                model=model,
+                product=product,
+                serial_number=serial_number,
+                imei=imei,
+                cpu=cpu,
+                ram=ram,
+                storage=storage,
+                details="Detectado via adb devices/getprop",
+            )
+        )
+
+    return results
+
+
+def _parse_getprop(raw_output: str) -> dict[str, str]:
+    props: dict[str, str] = {}
+    pattern = re.compile(r"^\[(.+?)\]\s*:\s*\[(.*)\]$")
+    for line in raw_output.splitlines():
+        match = pattern.match(line.strip())
+        if not match:
+            continue
+        props[match.group(1)] = match.group(2)
+    return props
+
+
+def _detect_adb_ram(serial: str, timeout: int = 8) -> str | None:
+    meminfo = _run_command(["adb", "-s", serial, "shell", "cat", "/proc/meminfo"], timeout=timeout)
+    for line in meminfo.splitlines():
+        if line.lower().startswith("memtotal"):
+            _, value = line.split(":", 1)
+            return _format_gb_from_kb(value)
+    return None
+
+
+def _detect_adb_storage(serial: str, timeout: int = 8) -> str | None:
+    df_out = _run_command(["adb", "-s", serial, "shell", "df", "/data"], timeout=timeout)
+    for line in df_out.splitlines():
+        if "/data" not in line:
+            continue
+        parts = line.split()
+        if len(parts) >= 2:
+            size = parts[1]
+            if size.lower().endswith("g"):
+                return size.upper()
+            if size.isdigit():
+                kb = int(size)
+                return f"{kb / (1024 * 1024):.1f} GB"
+            return size
     return None
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from tkinter import ttk
 
 from database import init_db, save_detection, search_articles
-from detector import DetectionResult, detect_fastboot_devices, detect_usb_modes
+from detector import DetectionResult, detect_adb_devices, detect_fastboot_devices, detect_usb_modes
 
 
 def resource_path(relative_path: str) -> Path:
@@ -15,16 +15,26 @@ def resource_path(relative_path: str) -> Path:
     return base_path / relative_path
 
 
-
 def infer_tags_from_detection(result: DetectionResult) -> list[str]:
     tags: list[str] = []
-    for value in [result.mode, result.brand, result.model, result.product, result.details]:
+    for value in [
+        result.mode,
+        result.brand,
+        result.model,
+        result.product,
+        result.cpu,
+        result.ram,
+        result.storage,
+        result.details,
+    ]:
         if not value:
             continue
         tags.extend(segment.strip().lower() for segment in value.replace("_", "-").split() if segment.strip())
 
     if result.mode == "fastboot":
         tags.extend(["fastboot", "flash-oficial", "diagnostico"])
+    if result.mode == "adb":
+        tags.extend(["adb", "serial", "imei", "cpu", "ram", "storage", "diagnostico"])
     if "download" in (result.mode or ""):
         tags.extend(["download-mode", "driver"])
     if "9008" in (result.mode or ""):
@@ -33,12 +43,36 @@ def infer_tags_from_detection(result: DetectionResult) -> list[str]:
     return sorted(set(tags))
 
 
+def suggest_articles(result: DetectionResult, tags: list[str]) -> list[dict]:
+    strategies = [
+        {"brand": result.brand or "", "model": result.model or "", "tags": tags},
+        {"brand": result.brand or "", "model": "", "tags": tags},
+        {"brand": "", "model": "", "tags": tags[:4]},
+        {"brand": result.brand or "", "model": "", "tags": [result.mode]},
+    ]
+
+    seen_ids: set[int] = set()
+    aggregated: list[dict] = []
+    for strategy in strategies:
+        rows = search_articles(
+            brand=strategy["brand"],
+            model=strategy["model"],
+            tags=[tag for tag in strategy["tags"] if tag],
+        )
+        for row in rows:
+            if row["id"] in seen_ids:
+                continue
+            seen_ids.add(row["id"])
+            aggregated.append(row)
+    return aggregated
+
+
 class DeviceDetectorApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Tech Vault Device Detector - Assistente")
-        self.geometry("1000x700")
-        self.minsize(920, 640)
+        self.geometry("1040x730")
+        self.minsize(940, 650)
 
         icon_path = resource_path("assets/app_icon.ico")
         if icon_path.exists():
@@ -55,25 +89,17 @@ class DeviceDetectorApp(tk.Tk):
         header.pack(fill=tk.X)
         ttk.Label(
             header,
-            text="Detector Android (Fastboot/Download/EDL)",
+            text="Detector Android (ADB/Fastboot/Download/EDL)",
             font=("Segoe UI", 12, "bold"),
         ).pack(side=tk.LEFT)
 
         controls = ttk.Frame(self, padding=10)
         controls.pack(fill=tk.X)
 
-        self.detect_button = ttk.Button(
-            controls,
-            text="▶ Executar detecção",
-            command=self.run_detection,
-        )
+        self.detect_button = ttk.Button(controls, text="▶ Executar detecção", command=self.run_detection)
         self.detect_button.pack(side=tk.LEFT, padx=4)
 
-        self.search_button = ttk.Button(
-            controls,
-            text="🔎 Executar busca",
-            command=self.run_manual_search,
-        )
+        self.search_button = ttk.Button(controls, text="🔎 Executar busca", command=self.run_manual_search)
         self.search_button.pack(side=tk.LEFT, padx=4)
 
         self.brand_var = tk.StringVar()
@@ -92,9 +118,9 @@ class DeviceDetectorApp(tk.Tk):
         panes.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 6))
 
         detected_frame = ttk.Labelframe(panes, text="Detecções")
-        self.detection_text = tk.Text(detected_frame, wrap=tk.WORD, height=12)
+        self.detection_text = tk.Text(detected_frame, wrap=tk.WORD, height=14)
         self.detection_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        panes.add(detected_frame, weight=1)
+        panes.add(detected_frame, weight=2)
 
         kb_frame = ttk.Labelframe(panes, text="Sugestões e artigos")
         self.kb_text = tk.Text(kb_frame, wrap=tk.WORD)
@@ -119,16 +145,15 @@ class DeviceDetectorApp(tk.Tk):
         self.status_var.set("Detectando dispositivos...")
         self.update_idletasks()
         self.detection_text.delete("1.0", tk.END)
-        results: list[DetectionResult] = []
 
-        fastboot_results = detect_fastboot_devices()
-        usb_results = detect_usb_modes()
-        results.extend(fastboot_results)
-        results.extend(usb_results)
+        results: list[DetectionResult] = []
+        results.extend(detect_adb_devices())
+        results.extend(detect_fastboot_devices())
+        results.extend(detect_usb_modes())
 
         if not results:
             self._append_detection("Nenhum dispositivo compatível detectado no momento.")
-            self._set_kb("Sem sugestões no momento. Conecte um aparelho em fastboot/download mode.")
+            self._set_kb("Sem sugestões no momento. Conecte um aparelho em adb/fastboot/download mode.")
             self.status_var.set("Nenhum dispositivo detectado.")
             return
 
@@ -137,16 +162,14 @@ class DeviceDetectorApp(tk.Tk):
         for idx, result in enumerate(results, start=1):
             save_detection(result.as_dict())
             self._append_detection(
-                f"[{idx}] modo={result.mode} marca={result.brand or '-'} modelo={result.model or '-'} "
-                f"produto={result.product or '-'} serial={result.identifier or '-'} vid={result.vid or '-'} pid={result.pid or '-'}"
+                f"[{idx}] modo={result.mode} marca={result.brand or '-'} modelo={result.model or '-'} produto={result.product or '-'}"
+            )
+            self._append_detection(
+                f"     serial={result.serial_number or result.identifier or '-'} imei={result.imei or '-'} cpu={result.cpu or '-'} ram={result.ram or '-'} storage={result.storage or '-'} vid={result.vid or '-'} pid={result.pid or '-'}"
             )
 
             tags = infer_tags_from_detection(result)
-            articles = search_articles(
-                brand=result.brand or "",
-                model=result.model or "",
-                tags=tags,
-            )
+            articles = suggest_articles(result, tags)
 
             if not articles:
                 continue
@@ -163,7 +186,10 @@ class DeviceDetectorApp(tk.Tk):
         if suggestions:
             self._set_kb("\n".join(suggestions))
         else:
-            self._set_kb("Detecção realizada, mas sem artigos relacionados para os tags atuais.")
+            self._set_kb(
+                "Detecção realizada. Ainda não houve match forte na base; tente 'Executar busca' com tags como: "
+                "motorola, fastboot, adb, imei, cpu, ram, storage."
+            )
 
         self.status_var.set(f"Detecção concluída. {len(results)} item(ns) encontrado(s).")
 

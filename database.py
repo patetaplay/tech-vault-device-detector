@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS detections (
     brand TEXT,
     model TEXT,
     product TEXT,
+    serial_number TEXT,
+    imei TEXT,
+    cpu TEXT,
+    ram TEXT,
+    storage TEXT,
     vid TEXT,
     pid TEXT,
     details TEXT
@@ -33,6 +38,14 @@ CREATE TABLE IF NOT EXISTS knowledge_articles (
     source TEXT
 );
 """
+
+DETECTION_COLUMNS: dict[str, str] = {
+    "serial_number": "TEXT",
+    "imei": "TEXT",
+    "cpu": "TEXT",
+    "ram": "TEXT",
+    "storage": "TEXT",
+}
 
 DEFAULT_ARTICLES: list[dict[str, str]] = [
     {
@@ -67,7 +80,7 @@ DEFAULT_ARTICLES: list[dict[str, str]] = [
         "title": "Motorola: diagnóstico de erro de fastboot",
         "brand": "Motorola",
         "model": "",
-        "tags": "motorola,fastboot,erro,diagnostico",
+        "tags": "motorola,fastboot,erro,diagnostico,moto",
         "summary": "Checklist de diagnóstico para falhas de comunicação em Fastboot.",
         "steps": (
             "1. Troque cabo e porta USB (preferir USB 2.0 traseira).\n"
@@ -76,6 +89,20 @@ DEFAULT_ARTICLES: list[dict[str, str]] = [
             "4. Cheque se bootloader está desbloqueado para comandos de flash."
         ),
         "source": "Motorola Rescue and Smart Assistant",
+    },
+    {
+        "title": "Motorola: coleta de informações por ADB",
+        "brand": "Motorola",
+        "model": "",
+        "tags": "motorola,moto,adb,serial,imei,cpu,ram,storage",
+        "summary": "Como coletar SN, IMEI, CPU, RAM e armazenamento em aparelhos Motorola com Android ligado.",
+        "steps": (
+            "1. Habilite Depuração USB nas Opções do Desenvolvedor.\n"
+            "2. Conecte o aparelho e aceite a chave RSA no telefone.\n"
+            "3. Execute detecção no app (modo ADB).\n"
+            "4. Se IMEI vier vazio, verifique permissões/restrições do Android e use ferramenta oficial de serviço."
+        ),
+        "source": "Boas práticas Android Debug Bridge",
     },
     {
         "title": "Qualcomm 9008: recuperação com pacote oficial",
@@ -103,6 +130,8 @@ def get_connection() -> sqlite3.Connection:
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _ensure_detection_columns(conn)
+
         existing = conn.execute("SELECT COUNT(*) AS total FROM knowledge_articles").fetchone()["total"]
         if existing == 0:
             conn.executemany(
@@ -114,6 +143,14 @@ def init_db() -> None:
             )
 
 
+def _ensure_detection_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(detections)").fetchall()
+    existing = {row[1] for row in rows}
+    for col, col_type in DETECTION_COLUMNS.items():
+        if col not in existing:
+            conn.execute(f"ALTER TABLE detections ADD COLUMN {col} {col_type}")
+
+
 def save_detection(record: dict[str, str | None]) -> None:
     payload = {
         "detected_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
@@ -123,6 +160,11 @@ def save_detection(record: dict[str, str | None]) -> None:
         "brand": record.get("brand"),
         "model": record.get("model"),
         "product": record.get("product"),
+        "serial_number": record.get("serial_number"),
+        "imei": record.get("imei"),
+        "cpu": record.get("cpu"),
+        "ram": record.get("ram"),
+        "storage": record.get("storage"),
         "vid": record.get("vid"),
         "pid": record.get("pid"),
         "details": record.get("details"),
@@ -132,9 +174,11 @@ def save_detection(record: dict[str, str | None]) -> None:
         conn.execute(
             """
             INSERT INTO detections (
-                detected_at, transport, mode, identifier, brand, model, product, vid, pid, details
+                detected_at, transport, mode, identifier, brand, model, product,
+                serial_number, imei, cpu, ram, storage, vid, pid, details
             ) VALUES (
-                :detected_at, :transport, :mode, :identifier, :brand, :model, :product, :vid, :pid, :details
+                :detected_at, :transport, :mode, :identifier, :brand, :model, :product,
+                :serial_number, :imei, :cpu, :ram, :storage, :vid, :pid, :details
             )
             """,
             payload,

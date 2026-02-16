@@ -1,6 +1,6 @@
 # Tech Vault Device Detector (Windows / Python)
 
-Aplicativo desktop para Windows que detecta aparelhos Android em **fastboot** e em outros modos USB (via **VID/PID hints**), registra detecções em SQLite e recomenda procedimentos legítimos da base de conhecimento.
+Aplicativo desktop para Windows que detecta aparelhos Android em **ADB**, **fastboot** e outros modos USB (via **VID/PID hints**), registra detecções em SQLite e recomenda procedimentos legítimos da base de conhecimento.
 
 ## O que o usuário final recebe
 
@@ -11,35 +11,31 @@ Aplicativo desktop para Windows que detecta aparelhos Android em **fastboot** e 
   - `USO-RAPIDO.txt`
   - `README.md`
 
-Ou seja: baixar, extrair e abrir o `.exe` (interface com botões na tela).
-
-## Acabamento de produto final
-
-- Janela com nome amigável: **Tech Vault Device Detector - Assistente**.
-- Executável com ícone próprio (`assets/app_icon.ico`).
-- Metadados de versão/descrição do `.exe` via `windows_version_info.txt`.
-
 ## Funcionalidades
 
-- Detecção de fastboot usando:
-  - `fastboot devices`
-  - `fastboot getvar product`
-  - `fastboot getvar model`
-- Detecção de modos USB por VID/PID (ex.: Download Mode Samsung, Qualcomm 9008/EDL, Fastboot de alguns fabricantes).
+- Detecção via **ADB** (quando Android está ligado + depuração USB ativa).
+- Detecção via **fastboot** (`fastboot devices` + `fastboot getvar all`).
+- Detecção de modos USB por VID/PID (Download/EDL/Fastboot).
+- Coleta e exibição (quando disponível) de:
+  - SN/serial
+  - IMEI (best effort; pode vir vazio por política do Android)
+  - Modelo
+  - CPU/SoC
+  - RAM
+  - Armazenamento
 - Persistência em SQLite das detecções.
-- Base de conhecimento local com artigos de:
-  - flash oficial
-  - drivers
-  - erros comuns
-  - diagnósticos
-- Busca por marca/modelo/tags.
-- Sugestão automática de artigos/procedimentos baseada no modelo/mode detectado e match por tags.
+- Base de conhecimento local com busca por marca/modelo/tags.
+- Sugestão automática de artigos com fallback de matching (mais robusto).
 
 ## Requisitos (para uso completo)
 
 - Windows 10/11
-- Android Platform Tools no PATH (para `fastboot`)
+- Android Platform Tools no PATH (`adb` e `fastboot`)
 - Drivers USB adequados por fabricante
+
+## Observação importante sobre IMEI
+
+Dependendo do modo e da política do aparelho (Android mais novo, permissões, bloqueios OEM), o IMEI pode não ser legível por ADB/fastboot comuns. Nesses casos o app mantém o campo como vazio e segue com as outras informações.
 
 ## Uso do .exe
 
@@ -52,12 +48,6 @@ Ou seja: baixar, extrair e abrir o `.exe` (interface com botões na tela).
 ## Build local (mais fácil)
 
 No Windows, clique duas vezes em `build_windows.bat`.
-
-Ele:
-- cria `.venv` se não existir,
-- instala dependências,
-- gera o ícone automaticamente (sem versionar binário),
-- gera o executável.
 
 Saída do executável:
 - `dist\TechVaultDeviceDetector.exe`
@@ -76,7 +66,7 @@ Saída em:
 
 ## Build e distribuição via GitHub
 
-> Este app **não roda no navegador/GitHub Pages**, pois precisa acessar USB local (`fastboot`/VID/PID).
+> Este app **não roda no navegador/GitHub Pages**, pois precisa acessar USB local (`adb`/`fastboot`/VID/PID).
 
 Workflow em `.github/workflows/build-windows.yml`:
 
@@ -96,19 +86,6 @@ Workflow em `.github/workflows/build-windows.yml`:
      - `TechVaultDeviceDetector-windows.zip`
      - `TechVaultDeviceDetector.exe`
 
-## Problema de atualização de branch com binários
-
-Se aparecer erro de “arquivos binários não são compatíveis”, este projeto já está preparado para evitar isso:
-- O ícone é gerado por script (`scripts/generate_icon.py`) durante o build.
-- Assim você não depende de atualizar/mesclar binários manualmente no branch.
-
-## Se o `.exe` “não está na pasta”
-
-Isso normalmente acontece porque:
-1. Você ainda **não rodou o build local** (`build_windows.bat`) — o `.exe` só aparece em `dist/` depois do build.
-2. Você baixou o projeto do GitHub, mas não baixou os artifacts/releases.
-3. Você baixou o `.zip` e ainda não extraiu.
-
 ## Banco de dados
 
 - Arquivo: `device_detector.db`
@@ -117,9 +94,3 @@ Isso normalmente acontece porque:
   - `knowledge_articles`
 
 A base de artigos é semeada automaticamente na primeira execução.
-
-## Observações
-
-- Se `fastboot` não estiver no PATH, a detecção fastboot não retorna resultados.
-- VID/PID hints cobrem cenários comuns e podem ser estendidos em `detector.py`.
-- O app não executa flash automático — apenas detecção, registro e recomendação de procedimentos legítimos.
