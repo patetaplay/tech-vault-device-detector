@@ -37,6 +37,29 @@ Aplicativo desktop para Windows que detecta aparelhos Android em **ADB**, **fast
 
 Dependendo do modo e da política do aparelho (Android mais novo, permissões, bloqueios OEM), o IMEI pode não ser legível por ADB/fastboot comuns. Nesses casos o app mantém o campo como vazio e segue com as outras informações.
 
+
+## Atualização automática do programa
+
+O app agora tem:
+- botão **⬆ Verificar atualização**
+- verificação automática ao iniciar
+- download automático da nova versão para a pasta `updates/`
+
+### Como configurar
+No arquivo `app.py`, ajuste a constante:
+
+```python
+UPDATE_REPO = "SEU_USUARIO/tech-vault-device-detector"
+```
+
+Troque para o seu repositório real no GitHub (formato `usuario/repositorio`).
+
+### Fluxo de update
+1. O app consulta `releases/latest` da API do GitHub.
+2. Se houver versão maior que a atual, pergunta se deseja atualizar.
+3. Se confirmar, baixa automaticamente o asset (`.zip` ou `.exe`) para `updates/`.
+4. Depois é só fechar o app antigo e abrir/instalar a nova versão baixada.
+
 ## Uso do .exe
 
 1. Baixe `TechVaultDeviceDetector-windows.zip` na aba **Actions** (artifact) ou **Releases**.

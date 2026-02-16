@@ -3,10 +3,14 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from database import init_db, save_detection, search_articles
 from detector import DetectionResult, detect_adb_devices, detect_fastboot_devices, detect_usb_modes
+from updater import check_for_updates, download_update
+
+APP_VERSION = "1.0.0"
+UPDATE_REPO = "SEU_USUARIO/tech-vault-device-detector"
 
 
 def resource_path(relative_path: str) -> Path:
@@ -70,9 +74,9 @@ def suggest_articles(result: DetectionResult, tags: list[str]) -> list[dict]:
 class DeviceDetectorApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Tech Vault Device Detector - Assistente")
-        self.geometry("1040x730")
-        self.minsize(940, 650)
+        self.title(f"Tech Vault Device Detector - Assistente (v{APP_VERSION})")
+        self.geometry("1080x740")
+        self.minsize(960, 660)
 
         icon_path = resource_path("assets/app_icon.ico")
         if icon_path.exists():
@@ -83,6 +87,7 @@ class DeviceDetectorApp(tk.Tk):
 
         init_db()
         self._build_ui()
+        self.after(1200, self.check_updates_on_startup)
 
     def _build_ui(self) -> None:
         header = ttk.Frame(self, padding=(10, 10, 10, 0))
@@ -102,10 +107,15 @@ class DeviceDetectorApp(tk.Tk):
         self.search_button = ttk.Button(controls, text="🔎 Executar busca", command=self.run_manual_search)
         self.search_button.pack(side=tk.LEFT, padx=4)
 
+        self.update_button = ttk.Button(controls, text="⬆ Verificar atualização", command=self.check_updates_manual)
+        self.update_button.pack(side=tk.LEFT, padx=4)
+
         self.brand_var = tk.StringVar()
         self.model_var = tk.StringVar()
         self.tags_var = tk.StringVar()
-        self.status_var = tk.StringVar(value="Pronto para uso. Conecte o aparelho e clique em 'Executar detecção'.")
+        self.status_var = tk.StringVar(
+            value="Pronto para uso. Conecte o aparelho e clique em 'Executar detecção'."
+        )
 
         ttk.Label(controls, text="Marca:").pack(side=tk.LEFT, padx=(18, 4))
         ttk.Entry(controls, textvariable=self.brand_var, width=16).pack(side=tk.LEFT)
@@ -140,6 +150,69 @@ class DeviceDetectorApp(tk.Tk):
     def _set_kb(self, content: str) -> None:
         self.kb_text.delete("1.0", tk.END)
         self.kb_text.insert(tk.END, content)
+
+    def check_updates_on_startup(self) -> None:
+        self._check_updates(interactive=False)
+
+    def check_updates_manual(self) -> None:
+        self._check_updates(interactive=True)
+
+    def _check_updates(self, interactive: bool) -> None:
+        self.status_var.set("Verificando atualização...")
+        self.update_idletasks()
+
+        info = check_for_updates(UPDATE_REPO, APP_VERSION)
+
+        if info.error:
+            self.status_var.set("Falha ao verificar atualização.")
+            if interactive:
+                messagebox.showwarning("Atualização", info.error)
+            return
+
+        if not info.available:
+            self.status_var.set(f"Você já está na versão mais recente ({APP_VERSION}).")
+            if interactive:
+                messagebox.showinfo("Atualização", "Você já está com a versão mais recente.")
+            return
+
+        ask = messagebox.askyesno(
+            "Atualização disponível",
+            (
+                f"Nova versão encontrada: {info.latest_version}\n"
+                f"Versão atual: {APP_VERSION}\n\n"
+                f"Deseja baixar automaticamente agora?"
+            ),
+        )
+        if not ask:
+            self.status_var.set("Atualização disponível, download cancelado pelo usuário.")
+            return
+
+        if not info.download_url:
+            messagebox.showwarning("Atualização", "Nova versão encontrada, mas sem arquivo para download.")
+            self.status_var.set("Sem asset para download da atualização.")
+            return
+
+        try:
+            output = download_update(
+                info.download_url,
+                destination_dir=Path.cwd() / "updates",
+                filename=info.asset_name,
+            )
+        except Exception as err:
+            messagebox.showerror("Atualização", f"Falha no download da atualização: {err}")
+            self.status_var.set("Falha no download da atualização.")
+            return
+
+        messagebox.showinfo(
+            "Atualização baixada",
+            (
+                f"Download concluído com sucesso!\n\n"
+                f"Arquivo: {output.name}\n"
+                f"Pasta: {output.parent}\n\n"
+                f"Feche o programa atual e instale/extraia a nova versão."
+            ),
+        )
+        self.status_var.set(f"Atualização baixada em: {output}")
 
     def run_detection(self) -> None:
         self.status_var.set("Detectando dispositivos...")
