@@ -26,6 +26,7 @@ Aplicativo desktop para Windows que detecta aparelhos Android em **ADB**, **fast
 - Persistência em SQLite das detecções.
 - Base de conhecimento local com busca por marca/modelo/tags.
 - Sugestão automática de artigos com fallback de matching (mais robusto).
+- Leitura por marca com abas dedicadas: Samsung, Motorola, Xiaomi e Realme.
 
 ## Requisitos (para uso completo)
 
@@ -77,6 +78,7 @@ Comportamento novo do app:
 3. Execute `TechVaultDeviceDetector.exe`.
 4. Clique em **Executar detecção** para detectar dispositivo.
 5. Use **Executar busca** para filtrar artigos por marca/modelo/tags.
+6. Para leitura rápida, use as abas de marca (Samsung/Motorola/Xiaomi/Realme) e clique em **Ler [Marca]**.
 
 ## Build local (mais fácil)
 

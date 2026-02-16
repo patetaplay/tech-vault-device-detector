@@ -11,6 +11,7 @@ from updater import check_for_updates, download_update, is_update_repo_configure
 
 APP_VERSION = "1.0.1"
 UPDATE_REPO = "SEU_USUARIO/tech-vault-device-detector"
+BRAND_TABS = ["Samsung", "Motorola", "Xiaomi", "Realme"]
 
 
 def resource_path(relative_path: str) -> Path:
@@ -75,8 +76,8 @@ class DeviceDetectorApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(f"Tech Vault Device Detector - Assistente (v{APP_VERSION})")
-        self.geometry("1080x740")
-        self.minsize(960, 660)
+        self.geometry("1100x780")
+        self.minsize(980, 700)
 
         icon_path = resource_path("assets/app_icon.ico")
         if icon_path.exists():
@@ -123,6 +124,21 @@ class DeviceDetectorApp(tk.Tk):
         ttk.Entry(controls, textvariable=self.model_var, width=16).pack(side=tk.LEFT)
         ttk.Label(controls, text="Tags:").pack(side=tk.LEFT, padx=(12, 4))
         ttk.Entry(controls, textvariable=self.tags_var, width=24).pack(side=tk.LEFT)
+
+        brand_reading_frame = ttk.Labelframe(self, text="Leitura por marca (abas)", padding=8)
+        brand_reading_frame.pack(fill=tk.X, padx=10, pady=(0, 6))
+
+        notebook = ttk.Notebook(brand_reading_frame)
+        notebook.pack(fill=tk.X, expand=True)
+        for brand in BRAND_TABS:
+            tab = ttk.Frame(notebook, padding=8)
+            notebook.add(tab, text=brand)
+            ttk.Label(tab, text=f"Abrir artigos e procedimentos da marca {brand}.").pack(side=tk.LEFT)
+            ttk.Button(
+                tab,
+                text=f"Ler {brand}",
+                command=lambda brand_name=brand: self.run_brand_tab_search(brand_name),
+            ).pack(side=tk.LEFT, padx=12)
 
         panes = ttk.PanedWindow(self, orient=tk.VERTICAL)
         panes.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 6))
@@ -284,6 +300,13 @@ class DeviceDetectorApp(tk.Tk):
             )
 
         self.status_var.set(f"Detecção concluída. {len(results)} item(ns) encontrado(s).")
+
+    def run_brand_tab_search(self, brand: str) -> None:
+        self.brand_var.set(brand)
+        self.model_var.set("")
+        self.tags_var.set("")
+        self.status_var.set(f"Leitura por aba: {brand}")
+        self.run_manual_search()
 
     def run_manual_search(self) -> None:
         self.status_var.set("Buscando artigos na base de conhecimento...")

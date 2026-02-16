@@ -105,6 +105,20 @@ DEFAULT_ARTICLES: list[dict[str, str]] = [
         "source": "Boas práticas Android Debug Bridge",
     },
     {
+        "title": "Realme: drivers e diagnóstico em modo fastboot/adb",
+        "brand": "Realme",
+        "model": "",
+        "tags": "realme,oppo,adb,fastboot,driver,diagnostico",
+        "summary": "Fluxo básico para validar comunicação Realme/OPPO no PC e evitar falhas de detecção.",
+        "steps": (
+            "1. Instale os drivers USB oficiais Realme/OPPO.\n"
+            "2. Ative depuração USB e valide com adb devices.\n"
+            "3. Em fastboot, valide com fastboot devices.\n"
+            "4. Use firmware oficial da região correta em qualquer procedimento de recuperação."
+        ),
+        "source": "Suporte Realme/OPPO",
+    },
+    {
         "title": "Qualcomm 9008: recuperação com pacote oficial",
         "brand": "",
         "model": "",
