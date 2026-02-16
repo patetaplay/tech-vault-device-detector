@@ -29,11 +29,19 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --windowed --name "TechVaultDeviceDetector" app.py
 
-      - name: Upload artifact
+      - name: Prepare distributable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item dist/TechVaultDeviceDetector.exe package/
+          Copy-Item USO-RAPIDO.txt package/
+          Compress-Archive -Path package/* -DestinationPath TechVaultDeviceDetector-windows.zip -Force
+
+      - name: Upload artifact (zip)
         uses: actions/upload-artifact@v4
         with:
           name: TechVaultDeviceDetector-windows
-          path: dist/TechVaultDeviceDetector.exe
+          path: TechVaultDeviceDetector-windows.zip
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -50,6 +58,6 @@ jobs:
       - name: Publish release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/TechVaultDeviceDetector.exe
+          files: dist/TechVaultDeviceDetector-windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

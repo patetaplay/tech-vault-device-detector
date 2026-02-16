@@ -1,6 +1,15 @@
 # Tech Vault Device Detector (Windows / Python)
 
-Aplicativo desktop simples para Windows que detecta aparelhos Android em **fastboot** e em outros modos USB (via **VID/PID hints**), registra tudo em SQLite e recomenda procedimentos legítimos da base de conhecimento.
+Aplicativo desktop para Windows que detecta aparelhos Android em **fastboot** e em outros modos USB (via **VID/PID hints**), registra detecções em SQLite e recomenda procedimentos legítimos da base de conhecimento.
+
+## O que o usuário final recebe
+
+- Um arquivo **.zip** pronto para download no GitHub Actions/Release.
+- Dentro do `.zip`:
+  - `TechVaultDeviceDetector.exe`
+  - `USO-RAPIDO.txt`
+
+Ou seja: baixar, extrair e abrir o `.exe` (interface com botões na tela).
 
 ## Funcionalidades
 
@@ -18,44 +27,33 @@ Aplicativo desktop simples para Windows que detecta aparelhos Android em **fastb
 - Busca por marca/modelo/tags.
 - Sugestão automática de artigos/procedimentos baseada no modelo/mode detectado e match por tags.
 
-## Requisitos
+## Requisitos (para uso completo)
 
 - Windows 10/11
-- Python 3.10+
 - Android Platform Tools no PATH (para `fastboot`)
 - Drivers USB adequados por fabricante
 
-## Instalação
+## Uso do .exe
+
+1. Baixe `TechVaultDeviceDetector-windows.zip` na aba **Actions** (artifact) ou **Releases**.
+2. Extraia o `.zip`.
+3. Execute `TechVaultDeviceDetector.exe`.
+4. Clique em **Executar detecção** para detectar dispositivo.
+5. Use **Executar busca** para filtrar artigos por marca/modelo/tags.
+
+## Build local com Python (opcional)
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-## Executar
-
-```powershell
 python app.py
 ```
 
-Ao iniciar:
-1. Clique em **Detectar dispositivos**.
-2. Veja as detecções no painel superior.
-3. Veja sugestões de artigos no painel inferior.
-4. Opcionalmente use filtros (marca/modelo/tags) e clique em **Buscar base de conhecimento**.
-
-## Build local com PyInstaller
-
-Instale:
+## Build local com PyInstaller (opcional)
 
 ```powershell
 pip install pyinstaller
-```
-
-Gere executável single-file com console oculto:
-
-```powershell
 pyinstaller --noconfirm --onefile --windowed --name "TechVaultDeviceDetector" app.py
 ```
 
@@ -63,24 +61,23 @@ Saída em:
 
 - `dist/TechVaultDeviceDetector.exe`
 
-## Build e distribuição via GitHub (mais fácil para acesso)
+## Build e distribuição via GitHub
 
-> Este app **não roda no navegador/GitHub Pages**, pois precisa acessar USB local (`fastboot`/VID/PID).  
-> O caminho ideal no GitHub é gerar o `.exe` automaticamente e baixar pronto em **Artifacts** ou **Releases**.
+> Este app **não roda no navegador/GitHub Pages**, pois precisa acessar USB local (`fastboot`/VID/PID).
 
-Foi adicionado workflow em `.github/workflows/build-windows.yml` com dois modos:
+Workflow em `.github/workflows/build-windows.yml`:
 
 1. **Manual (`workflow_dispatch`)**
-   - Vá em **Actions** → **Build Windows Executable** → **Run workflow**.
-   - Ao finalizar, baixe o executável em **Artifacts** (`TechVaultDeviceDetector-windows`).
+   - Acesse **Actions** → **Build Windows Executable** → **Run workflow**.
+   - Ao terminar, baixe o artifact `TechVaultDeviceDetector-windows` (zip com exe + guia rápido).
 
 2. **Por tag de versão (`v*`)**
-   - Crie e envie uma tag, por exemplo:
+   - Crie e envie tag:
      ```bash
      git tag v1.0.0
      git push origin v1.0.0
      ```
-   - O workflow compila no Windows e publica `TechVaultDeviceDetector.exe` na **Release** da tag.
+   - O workflow compila e publica o `.zip` na **Release** da tag.
 
 ## Banco de dados
 
@@ -93,6 +90,6 @@ A base de artigos é semeada automaticamente na primeira execução.
 
 ## Observações
 
-- Se `fastboot` não estiver no PATH, a detecção fastboot não retornará resultados.
-- VID/PID hints cobrem cenários comuns e podem ser estendidos no arquivo `detector.py`.
-- O app não executa flash nem ações de risco — apenas detecção, registro e recomendação de procedimentos legítimos.
+- Se `fastboot` não estiver no PATH, a detecção fastboot não retorna resultados.
+- VID/PID hints cobrem cenários comuns e podem ser estendidos em `detector.py`.
+- O app não executa flash automático — apenas detecção, registro e recomendação de procedimentos legítimos.

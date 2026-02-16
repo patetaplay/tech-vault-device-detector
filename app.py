@@ -28,22 +28,42 @@ class DeviceDetectorApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Tech Vault Device Detector")
-        self.geometry("1000x680")
-        self.minsize(900, 620)
+        self.geometry("1000x700")
+        self.minsize(920, 640)
 
         init_db()
         self._build_ui()
 
     def _build_ui(self) -> None:
+        header = ttk.Frame(self, padding=(10, 10, 10, 0))
+        header.pack(fill=tk.X)
+        ttk.Label(
+            header,
+            text="Detector Android (Fastboot/Download/EDL)",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(side=tk.LEFT)
+
         controls = ttk.Frame(self, padding=10)
         controls.pack(fill=tk.X)
 
-        ttk.Button(controls, text="Detectar dispositivos", command=self.run_detection).pack(side=tk.LEFT, padx=4)
-        ttk.Button(controls, text="Buscar base de conhecimento", command=self.run_manual_search).pack(side=tk.LEFT, padx=4)
+        self.detect_button = ttk.Button(
+            controls,
+            text="▶ Executar detecção",
+            command=self.run_detection,
+        )
+        self.detect_button.pack(side=tk.LEFT, padx=4)
+
+        self.search_button = ttk.Button(
+            controls,
+            text="🔎 Executar busca",
+            command=self.run_manual_search,
+        )
+        self.search_button.pack(side=tk.LEFT, padx=4)
 
         self.brand_var = tk.StringVar()
         self.model_var = tk.StringVar()
         self.tags_var = tk.StringVar()
+        self.status_var = tk.StringVar(value="Pronto para uso. Conecte o aparelho e clique em 'Executar detecção'.")
 
         ttk.Label(controls, text="Marca:").pack(side=tk.LEFT, padx=(18, 4))
         ttk.Entry(controls, textvariable=self.brand_var, width=16).pack(side=tk.LEFT)
@@ -53,7 +73,7 @@ class DeviceDetectorApp(tk.Tk):
         ttk.Entry(controls, textvariable=self.tags_var, width=24).pack(side=tk.LEFT)
 
         panes = ttk.PanedWindow(self, orient=tk.VERTICAL)
-        panes.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        panes.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 6))
 
         detected_frame = ttk.Labelframe(panes, text="Detecções")
         self.detection_text = tk.Text(detected_frame, wrap=tk.WORD, height=12)
@@ -65,7 +85,11 @@ class DeviceDetectorApp(tk.Tk):
         self.kb_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         panes.add(kb_frame, weight=2)
 
-        self._append_detection("Clique em 'Detectar dispositivos' para iniciar.")
+        status = ttk.Frame(self, padding=(10, 0, 10, 10))
+        status.pack(fill=tk.X)
+        ttk.Label(status, textvariable=self.status_var).pack(side=tk.LEFT)
+
+        self._append_detection("Clique em 'Executar detecção' para iniciar.")
 
     def _append_detection(self, line: str) -> None:
         self.detection_text.insert(tk.END, f"{line}\n")
@@ -76,6 +100,8 @@ class DeviceDetectorApp(tk.Tk):
         self.kb_text.insert(tk.END, content)
 
     def run_detection(self) -> None:
+        self.status_var.set("Detectando dispositivos...")
+        self.update_idletasks()
         self.detection_text.delete("1.0", tk.END)
         results: list[DetectionResult] = []
 
@@ -87,6 +113,7 @@ class DeviceDetectorApp(tk.Tk):
         if not results:
             self._append_detection("Nenhum dispositivo compatível detectado no momento.")
             self._set_kb("Sem sugestões no momento. Conecte um aparelho em fastboot/download mode.")
+            self.status_var.set("Nenhum dispositivo detectado.")
             return
 
         suggestions: list[str] = []
@@ -122,7 +149,11 @@ class DeviceDetectorApp(tk.Tk):
         else:
             self._set_kb("Detecção realizada, mas sem artigos relacionados para os tags atuais.")
 
+        self.status_var.set(f"Detecção concluída. {len(results)} item(ns) encontrado(s).")
+
     def run_manual_search(self) -> None:
+        self.status_var.set("Buscando artigos na base de conhecimento...")
+        self.update_idletasks()
         tags = [tag.strip() for tag in self.tags_var.get().split(",") if tag.strip()]
         rows = search_articles(
             brand=self.brand_var.get().strip(),
@@ -132,6 +163,7 @@ class DeviceDetectorApp(tk.Tk):
 
         if not rows:
             self._set_kb("Nenhum artigo encontrado para os filtros informados.")
+            self.status_var.set("Busca concluída sem resultados.")
             return
 
         content = []
@@ -147,6 +179,7 @@ class DeviceDetectorApp(tk.Tk):
             )
 
         self._set_kb("\n".join(content))
+        self.status_var.set(f"Busca concluída. {len(rows)} artigo(s) encontrado(s).")
 
 
 if __name__ == "__main__":

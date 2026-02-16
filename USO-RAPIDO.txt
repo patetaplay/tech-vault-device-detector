@@ -1,0 +1,17 @@
+TECH VAULT DEVICE DETECTOR - USO RÁPIDO
+
+1) Abra TechVaultDeviceDetector.exe
+2) Conecte o celular ao PC com cabo USB de dados
+3) Coloque o aparelho no modo desejado (Fastboot, Download ou EDL)
+4) Clique no botão "Executar detecção"
+5) Veja as informações detectadas na área "Detecções"
+6) Veja recomendações na área "Sugestões e artigos"
+
+Busca manual:
+- Preencha Marca / Modelo / Tags
+- Clique em "Executar busca"
+
+Observações:
+- Este app não faz flash automático.
+- Ele detecta, registra no SQLite e recomenda procedimentos legítimos.
+- Para fastboot funcionar, o comando fastboot deve estar instalado no Windows.
