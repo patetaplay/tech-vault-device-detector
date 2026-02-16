@@ -6,10 +6,15 @@ from dataclasses import dataclass
 
 try:
     import usb.core
+    import usb.util
 except Exception:  # pyusb may be unavailable in some environments
     usb = None
+    usb_util = None
 else:
     usb = usb.core
+    usb_util = usb.util
+
+FASTBOOT_BINARIES = ["fastboot", "mfastboot"]
 
 
 @dataclass
@@ -67,6 +72,7 @@ BRAND_HINTS = {
     "google": "Google",
     "pixel": "Google",
     "oneplus": "OnePlus",
+    "realme": "Realme",
 }
 
 
@@ -76,6 +82,15 @@ def _run_command(cmd: list[str], timeout: int = 8) -> str:
     except (FileNotFoundError, subprocess.SubprocessError):
         return ""
     return f"{proc.stdout}\n{proc.stderr}"
+
+
+def _run_fastboot_command(args: list[str], timeout: int = 8) -> tuple[str, str | None]:
+    """Try fastboot then mfastboot; return output and binary used."""
+    for binary in FASTBOOT_BINARIES:
+        output = _run_command([binary, *args], timeout=timeout)
+        if output.strip():
+            return output, binary
+    return "", None
 
 
 def _parse_key_values(raw_output: str) -> dict[str, str]:
@@ -122,28 +137,85 @@ def _format_gb_from_kb(kb_value: str | None) -> str | None:
     return f"{gb:.1f} GB"
 
 
-def detect_fastboot_devices(timeout: int = 8) -> list[DetectionResult]:
-    """Detects devices available via fastboot and enriches with getvar details."""
-    results: list[DetectionResult] = []
-    fastboot_devices_out = _run_command(["fastboot", "devices"], timeout=timeout)
-
-    for line in fastboot_devices_out.splitlines():
-        if not line.strip():
+def _parse_devices_output(raw_output: str) -> list[dict[str, str]]:
+    devices: list[dict[str, str]] = []
+    for line in raw_output.splitlines():
+        cleaned = line.strip()
+        if not cleaned or "\t" not in cleaned:
             continue
-        serial = line.split()[0]
 
-        vars_raw = _run_command(["fastboot", "-s", serial, "getvar", "all"], timeout=timeout)
-        vars_map = _parse_key_values(vars_raw)
+        parts = cleaned.split()
+        if len(parts) < 2:
+            continue
 
-        model = vars_map.get("model") or vars_map.get("sku")
-        product = vars_map.get("product")
+        serial = parts[0]
+        info = {"serial": serial}
+
+        for token in parts[2:]:
+            if ":" in token:
+                k, v = token.split(":", 1)
+                info[k.lower()] = v
+        devices.append(info)
+    return devices
+
+
+def _collect_fastboot_vars(serial: str, timeout: int = 8) -> tuple[dict[str, str], str | None]:
+    vars_map: dict[str, str] = {}
+    vars_raw, used_binary = _run_fastboot_command(["-s", serial, "getvar", "all"], timeout=timeout)
+    vars_map.update(_parse_key_values(vars_raw))
+
+    # Fallback for devices/toolchains where getvar all is limited.
+    fallback_vars = [
+        "product",
+        "model",
+        "serialno",
+        "serial-number",
+        "imei",
+        "imei1",
+        "meid",
+        "cpu",
+        "soc",
+        "chipname",
+        "ram",
+        "memory",
+        "storage",
+        "ufs",
+        "emmc",
+    ]
+    for var_name in fallback_vars:
+        if var_name in vars_map and vars_map[var_name]:
+            continue
+        value_raw, _ = _run_fastboot_command(["-s", serial, "getvar", var_name], timeout=timeout)
+        single = _parse_key_values(value_raw)
+        if var_name in single and single[var_name]:
+            vars_map[var_name] = single[var_name]
+
+    return vars_map, used_binary
+
+
+def detect_fastboot_devices(timeout: int = 8) -> list[DetectionResult]:
+    """Detects devices available via fastboot/mfastboot and enriches details."""
+    results: list[DetectionResult] = []
+    raw_out, used_binary = _run_fastboot_command(["devices", "-l"], timeout=timeout)
+
+    if not raw_out.strip():
+        # Some builds do not support -l; retry plain devices.
+        raw_out, used_binary = _run_fastboot_command(["devices"], timeout=timeout)
+
+    for device_info in _parse_devices_output(raw_out):
+        serial = device_info.get("serial")
+        if not serial:
+            continue
+
+        vars_map, vars_binary = _collect_fastboot_vars(serial, timeout=timeout)
+
+        model = vars_map.get("model") or vars_map.get("sku") or device_info.get("model")
+        product = vars_map.get("product") or device_info.get("product")
         serial_number = vars_map.get("serialno") or vars_map.get("serial-number") or serial
-        imei = _extract_imei(
-            vars_map.get("imei"),
-            vars_map.get("imei1"),
-            vars_map.get("meid"),
-        )
+        imei = _extract_imei(vars_map.get("imei"), vars_map.get("imei1"), vars_map.get("meid"))
         brand = _infer_brand(vars_map.get("brand"), model, product)
+
+        active_binary = vars_binary or used_binary or "fastboot"
 
         result = DetectionResult(
             mode="fastboot",
@@ -156,7 +228,7 @@ def detect_fastboot_devices(timeout: int = 8) -> list[DetectionResult]:
             cpu=vars_map.get("cpu") or vars_map.get("soc") or vars_map.get("chipname"),
             ram=vars_map.get("ram") or vars_map.get("memory"),
             storage=vars_map.get("storage") or vars_map.get("ufs") or vars_map.get("emmc"),
-            details="Detectado via fastboot devices/getvar all",
+            details=f"Detectado via {active_binary} devices/getvar",
         )
         results.append(result)
 
@@ -250,6 +322,17 @@ def _detect_adb_storage(serial: str, timeout: int = 8) -> str | None:
     return None
 
 
+def _get_usb_serial(dev) -> str | None:
+    if usb_util is None:
+        return None
+    try:
+        if getattr(dev, "iSerialNumber", 0):
+            return usb_util.get_string(dev, dev.iSerialNumber)
+    except Exception:
+        return None
+    return None
+
+
 def detect_usb_modes() -> list[DetectionResult]:
     """Enumerates USB VID/PID and maps known hints for Download/EDL/Fastboot."""
     if usb is None:
@@ -269,6 +352,7 @@ def detect_usb_modes() -> list[DetectionResult]:
             DetectionResult(
                 mode=hint["mode"],
                 brand=hint.get("brand"),
+                identifier=_get_usb_serial(dev),
                 vid=vid,
                 pid=pid,
                 details=hint.get("details"),

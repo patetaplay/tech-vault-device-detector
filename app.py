@@ -72,6 +72,41 @@ def suggest_articles(result: DetectionResult, tags: list[str]) -> list[dict]:
     return aggregated
 
 
+def consolidate_results(raw_results: list[DetectionResult]) -> list[DetectionResult]:
+    """Prefer richer ADB/Fastboot records over plain USB-hint duplicates."""
+    consolidated: list[DetectionResult] = []
+
+    for item in raw_results:
+        is_usb_hint_only = bool(item.details and "USB hint" in item.details and not (item.model or item.product or item.serial_number or item.imei))
+        replaced = False
+
+        for idx, existing in enumerate(consolidated):
+            same_serial = bool(item.identifier and existing.identifier and item.identifier == existing.identifier)
+            same_vid_pid_mode = bool(
+                item.mode == existing.mode
+                and item.vid
+                and item.pid
+                and item.vid == existing.vid
+                and item.pid == existing.pid
+            )
+
+            if not (same_serial or same_vid_pid_mode):
+                continue
+
+            existing_is_hint = bool(existing.details and "USB hint" in existing.details and not (existing.model or existing.product or existing.serial_number or existing.imei))
+
+            if existing_is_hint and not is_usb_hint_only:
+                consolidated[idx] = item
+            replaced = True
+            break
+
+        if not replaced:
+            consolidated.append(item)
+
+    return consolidated
+
+
+
 class DeviceDetectorApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -245,10 +280,11 @@ class DeviceDetectorApp(tk.Tk):
         self.update_idletasks()
         self.detection_text.delete("1.0", tk.END)
 
-        results: list[DetectionResult] = []
-        results.extend(detect_adb_devices())
-        results.extend(detect_fastboot_devices())
-        results.extend(detect_usb_modes())
+        raw_results: list[DetectionResult] = []
+        raw_results.extend(detect_adb_devices())
+        raw_results.extend(detect_fastboot_devices())
+        raw_results.extend(detect_usb_modes())
+        results = consolidate_results(raw_results)
 
         if not results:
             self._append_detection("Nenhum dispositivo compatível detectado no momento.")

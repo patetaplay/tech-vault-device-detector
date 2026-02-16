@@ -14,7 +14,7 @@ Aplicativo desktop para Windows que detecta aparelhos Android em **ADB**, **fast
 ## Funcionalidades
 
 - Detecção via **ADB** (quando Android está ligado + depuração USB ativa).
-- Detecção via **fastboot** (`fastboot devices` + `fastboot getvar all`).
+- Detecção via **fastboot/mfastboot** (`fastboot devices -l` + `getvar all` + fallback por variáveis).
 - Detecção de modos USB por VID/PID (Download/EDL/Fastboot).
 - Coleta e exibição (quando disponível) de:
   - SN/serial
@@ -140,3 +140,13 @@ Para detalhar (SN/modelo/produto):
 - valide no terminal: `fastboot devices`,
 - depois execute a detecção novamente.
 
+
+
+## Diagnóstico quando a leitura vem incompleta
+
+Se aparecer apenas `vid/pid` e o texto de **USB hint**, significa que o Windows reconheceu a porta USB, mas o comando fastboot não conseguiu ler variáveis do aparelho.
+
+Checklist:
+- Instale/reinstale o driver fastboot da Motorola.
+- Teste no terminal: `fastboot devices -l` e (se necessário) `mfastboot devices`.
+- Se o aparelho estiver ligado no Android, ative depuração USB e tente modo ADB para coletar mais dados.
