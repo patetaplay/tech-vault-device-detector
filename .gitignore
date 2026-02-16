@@ -1,0 +1,14 @@
+
+*.db
+*.log
+*.py[cod]
+*.spec
+*.sqlite
+*.sqlite3
+.venv/
+__pycache__/
+assets/app_icon.ico
+build/
+dist/
+logs/
+venv/

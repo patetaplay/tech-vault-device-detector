@@ -1,0 +1,82 @@
+name: Build Windows Executable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Generate icon asset
+        run: |
+          python scripts/generate_icon.py
+
+      - name: Build executable
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name "TechVaultDeviceDetector" --icon "assets/app_icon.ico" --version-file "windows_version_info.txt" --add-data "assets/app_icon.ico;assets" app.py
+
+      - name: Prepare distributable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item dist/TechVaultDeviceDetector.exe package/
+          Copy-Item USO-RAPIDO.txt package/
+          Copy-Item README.md package/
+          Compress-Archive -Path package/* -DestinationPath TechVaultDeviceDetector-windows.zip -Force
+
+      - name: Upload artifact (zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TechVaultDeviceDetector-windows
+          path: TechVaultDeviceDetector-windows.zip
+
+      - name: Upload artifact (exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TechVaultDeviceDetector-exe
+          path: dist/TechVaultDeviceDetector.exe
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: TechVaultDeviceDetector-windows
+          path: dist
+
+      - name: Download exe artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: TechVaultDeviceDetector-exe
+          path: dist
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/TechVaultDeviceDetector-windows.zip
+            dist/TechVaultDeviceDetector.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
