@@ -1,14 +1,15 @@
 # Painel de Atendimento Técnico
 
-Painel web para organizar o dia a dia de suporte remoto com atalhos, checklist, mensagens prontas e ordem de serviço.
+Painel web para organizar o dia a dia de suporte remoto com atalhos, checklist, mensagens prontas, ordens de serviço e gestão de caixa.
 
 ## Funcionalidades
 - Atalhos rápidos para ferramentas e sites (com possibilidade de adicionar novos links).
 - Checklist personalizável para padronizar o atendimento.
 - Mensagens prontas com botão de cópia.
-- Ordem de serviço com nome do cliente, serviço realizado e valor cobrado.
-- Cálculo automático do total cobrado no dia.
-- Persistência local no navegador via `localStorage`.
+- Ordem de serviço com data, cliente, serviço e valor cobrado.
+- Histórico completo das OS salvo no `localStorage`.
+- Gestão de caixa com entradas e saídas.
+- Fechamento automático diário, semanal e mensal (ganhos, gastos e resultado).
 
 ## Rodar no navegador (modo web)
 1. Abra `index.html` no navegador.

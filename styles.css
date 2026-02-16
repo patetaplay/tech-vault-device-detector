@@ -6,6 +6,7 @@
   --accent: #38bdf8;
   --muted: #94a3b8;
   --ok: #22c55e;
+  --danger: #f87171;
 }
 
 * { box-sizing: border-box; }
@@ -117,6 +118,40 @@ button:hover { border-color: var(--accent); }
   gap: .45rem;
   margin-bottom: .75rem;
 }
+.ticket-form-wide {
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+}
+
+.cash-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: .7rem;
+  margin: 1rem 0;
+}
+.summary-card {
+  border: 1px solid #334155;
+  background: #0f172a;
+  border-radius: 12px;
+  padding: .75rem;
+}
+.summary-card h4 {
+  margin: 0 0 .45rem;
+}
+.summary-card p {
+  margin: .2rem 0;
+}
+.muted {
+  color: var(--muted);
+  font-size: .9rem;
+}
+.text-danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+h3 {
+  margin-top: 1.2rem;
+}
 
 table {
   width: 100%;
@@ -129,7 +164,6 @@ th, td {
   padding: .45rem;
 }
 .status-ok { color: var(--ok); font-weight: 600; }
-.total-value { margin-top: .85rem; color: #cbd5e1; }
 
 
 dialog {
@@ -143,6 +177,9 @@ dialog::backdrop { background: rgba(2, 6, 23, .7); }
 menu { display: flex; justify-content: end; gap: .6rem; margin: 0; padding: 0; }
 label { display: grid; gap: .3rem; }
 
-@media (max-width: 780px) {
-  .ticket-form { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .ticket-form,
+  .ticket-form-wide {
+    grid-template-columns: 1fr;
+  }
 }

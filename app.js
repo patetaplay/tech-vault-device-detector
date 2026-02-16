@@ -1,7 +1,8 @@
 const STORAGE_KEYS = {
   tools: 'panel.tools',
   checklist: 'panel.checklist',
-  serviceOrders: 'panel.serviceOrders'
+  serviceOrders: 'panel.serviceOrders',
+  cashEntries: 'panel.cashEntries'
 };
 
 const defaultTools = [
@@ -24,17 +25,31 @@ const messageTemplates = [
   'Atendimento finalizado com sucesso. Se quiser, posso te enviar um resumo do que foi feito.'
 ];
 
+const todayIso = getTodayIso();
+
 const state = {
   tools: load(STORAGE_KEYS.tools, defaultTools),
   checklist: load(STORAGE_KEYS.checklist, defaultChecklist),
-  serviceOrders: load(STORAGE_KEYS.serviceOrders, [])
+  serviceOrders: migrateServiceOrders(load(STORAGE_KEYS.serviceOrders, [])),
+  cashEntries: load(STORAGE_KEYS.cashEntries, [])
 };
 
 const toolGrid = document.getElementById('toolGrid');
 const checklistEl = document.getElementById('checklist');
 const templateList = document.getElementById('templateList');
 const serviceOrderTable = document.getElementById('serviceOrderTable');
-const totalBilledEl = document.getElementById('totalBilled');
+const cashTable = document.getElementById('cashTable');
+const cashSummary = document.getElementById('cashSummary');
+
+document.getElementById('osDataInput').value = todayIso;
+document.getElementById('cashDataInput').value = todayIso;
+
+function getTodayIso() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 10);
+}
 
 function load(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -46,14 +61,30 @@ function load(key, fallback) {
   }
 }
 
+function migrateServiceOrders(orders) {
+  return orders.map((order) => ({
+    ...order,
+    id: order.id || crypto.randomUUID(),
+    data: order.data || todayIso,
+    valor: Number(order.valor) || 0
+  }));
+}
+
 function formatCurrency(value) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year}`;
 }
 
 function persist() {
   localStorage.setItem(STORAGE_KEYS.tools, JSON.stringify(state.tools));
   localStorage.setItem(STORAGE_KEYS.checklist, JSON.stringify(state.checklist));
   localStorage.setItem(STORAGE_KEYS.serviceOrders, JSON.stringify(state.serviceOrders));
+  localStorage.setItem(STORAGE_KEYS.cashEntries, JSON.stringify(state.cashEntries));
 }
 
 function renderTools() {
@@ -94,7 +125,9 @@ function renderTemplates() {
     btn.addEventListener('click', async () => {
       await navigator.clipboard.writeText(text);
       btn.textContent = 'Copiado!';
-      setTimeout(() => (btn.textContent = 'Copiar'), 1200);
+      setTimeout(() => {
+        btn.textContent = 'Copiar';
+      }, 1200);
     });
     div.appendChild(btn);
     templateList.appendChild(div);
@@ -104,20 +137,129 @@ function renderTemplates() {
 function renderServiceOrders() {
   serviceOrderTable.innerHTML = '';
 
-  let total = 0;
-  state.serviceOrders.forEach((order, index) => {
-    total += order.valor;
+  const sorted = [...state.serviceOrders].sort((a, b) => b.data.localeCompare(a.data));
+  sorted.forEach((order) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td>${formatDate(order.data)}</td>
       <td>${order.cliente}</td>
       <td>${order.servico}</td>
       <td class="status-ok">${formatCurrency(order.valor)}</td>
-      <td><button class="secondary" data-del-os="${index}">Excluir</button></td>
+      <td><button class="secondary" data-del-os="${order.id}">Excluir</button></td>
     `;
     serviceOrderTable.appendChild(tr);
   });
+}
 
-  totalBilledEl.textContent = formatCurrency(total);
+function getWeekRange(date = new Date()) {
+  const current = new Date(date);
+  const day = current.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+
+  const start = new Date(current);
+  start.setDate(current.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
+function dateInRange(isoDate, start, end) {
+  const target = new Date(`${isoDate}T12:00:00`);
+  return target >= start && target <= end;
+}
+
+function calculateCashSummary() {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const month = now.toISOString().slice(0, 7);
+  const week = getWeekRange(now);
+
+  const periods = {
+    diario: {
+      label: 'Fechamento diário',
+      match: (date) => date === today
+    },
+    semanal: {
+      label: 'Fechamento semanal',
+      match: (date) => dateInRange(date, week.start, week.end)
+    },
+    mensal: {
+      label: 'Fechamento mensal',
+      match: (date) => date.startsWith(month)
+    }
+  };
+
+  const result = {};
+  Object.entries(periods).forEach(([key, config]) => {
+    const ganhosOS = state.serviceOrders
+      .filter((order) => config.match(order.data))
+      .reduce((sum, order) => sum + order.valor, 0);
+
+    const extraEntradas = state.cashEntries
+      .filter((entry) => config.match(entry.data) && entry.tipo === 'entrada')
+      .reduce((sum, entry) => sum + entry.valor, 0);
+
+    const gastos = state.cashEntries
+      .filter((entry) => config.match(entry.data) && entry.tipo === 'saida')
+      .reduce((sum, entry) => sum + entry.valor, 0);
+
+    const ganhos = ganhosOS + extraEntradas;
+    result[key] = {
+      label: config.label,
+      ganhos,
+      gastos,
+      lucro: ganhos - gastos,
+      os: ganhosOS,
+      extras: extraEntradas
+    };
+  });
+
+  return result;
+}
+
+function renderCashSummary() {
+  const summary = calculateCashSummary();
+  cashSummary.innerHTML = '';
+
+  Object.values(summary).forEach((item) => {
+    const block = document.createElement('article');
+    block.className = 'summary-card';
+    block.innerHTML = `
+      <h4>${item.label}</h4>
+      <p>Ganhos: <strong>${formatCurrency(item.ganhos)}</strong></p>
+      <p class="muted">↳ OS: ${formatCurrency(item.os)} | Entradas extras: ${formatCurrency(item.extras)}</p>
+      <p>Gastos: <strong class="text-danger">${formatCurrency(item.gastos)}</strong></p>
+      <p>Resultado: <strong class="${item.lucro >= 0 ? 'status-ok' : 'text-danger'}">${formatCurrency(item.lucro)}</strong></p>
+    `;
+    cashSummary.appendChild(block);
+  });
+}
+
+function renderCashEntries() {
+  cashTable.innerHTML = '';
+
+  const sorted = [...state.cashEntries].sort((a, b) => b.data.localeCompare(a.data));
+  sorted.forEach((entry) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${formatDate(entry.data)}</td>
+      <td>${entry.tipo === 'entrada' ? 'Entrada' : 'Saída'}</td>
+      <td>${entry.descricao}</td>
+      <td class="${entry.tipo === 'entrada' ? 'status-ok' : 'text-danger'}">${formatCurrency(entry.valor)}</td>
+      <td><button class="secondary" data-del-cash="${entry.id}">Excluir</button></td>
+    `;
+    cashTable.appendChild(tr);
+  });
+}
+
+function renderFinance() {
+  renderServiceOrders();
+  renderCashEntries();
+  renderCashSummary();
 }
 
 function updateClock() {
@@ -177,21 +319,62 @@ document.getElementById('serviceOrderForm').addEventListener('submit', (e) => {
   const cliente = document.getElementById('osClienteInput').value.trim();
   const servico = document.getElementById('osServicoInput').value.trim();
   const valor = Number(document.getElementById('osValorInput').value);
+  const data = document.getElementById('osDataInput').value;
 
-  if (!cliente || !servico || Number.isNaN(valor) || valor < 0) return;
+  if (!cliente || !servico || !data || Number.isNaN(valor) || valor < 0) return;
 
-  state.serviceOrders.unshift({ cliente, servico, valor });
+  state.serviceOrders.unshift({
+    id: crypto.randomUUID(),
+    cliente,
+    servico,
+    valor,
+    data
+  });
+
   persist();
-  renderServiceOrders();
+  renderFinance();
   e.target.reset();
+  document.getElementById('osDataInput').value = todayIso;
 });
 
 serviceOrderTable.addEventListener('click', (e) => {
-  const idx = e.target.getAttribute('data-del-os');
-  if (idx === null) return;
-  state.serviceOrders.splice(idx, 1);
+  const id = e.target.getAttribute('data-del-os');
+  if (!id) return;
+  state.serviceOrders = state.serviceOrders.filter((item) => item.id !== id);
   persist();
-  renderServiceOrders();
+  renderFinance();
+});
+
+document.getElementById('cashForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const tipo = document.getElementById('cashTipoInput').value;
+  const descricao = document.getElementById('cashDescricaoInput').value.trim();
+  const valor = Number(document.getElementById('cashValorInput').value);
+  const data = document.getElementById('cashDataInput').value;
+
+  if (!tipo || !descricao || !data || Number.isNaN(valor) || valor < 0) return;
+
+  state.cashEntries.unshift({
+    id: crypto.randomUUID(),
+    tipo,
+    descricao,
+    valor,
+    data
+  });
+
+  persist();
+  renderFinance();
+  e.target.reset();
+  document.getElementById('cashDataInput').value = todayIso;
+  document.getElementById('cashTipoInput').value = 'entrada';
+});
+
+cashTable.addEventListener('click', (e) => {
+  const id = e.target.getAttribute('data-del-cash');
+  if (!id) return;
+  state.cashEntries = state.cashEntries.filter((entry) => entry.id !== id);
+  persist();
+  renderFinance();
 });
 
 updateClock();
@@ -199,4 +382,5 @@ setInterval(updateClock, 1000);
 renderTools();
 renderChecklist();
 renderTemplates();
-renderServiceOrders();
+renderFinance();
+persist();
