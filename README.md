@@ -28,26 +28,26 @@ Painel web para organizar o dia a dia de suporte remoto com atalhos, checklist, 
    npm start
    ```
 
-## Gerar `.exe` com duplo clique (Windows)
-1. Abra a pasta do projeto no Windows.
-2. Dê duplo clique em `build.bat`.
-3. O script vai:
-   - instalar dependências (`npm install`)
-   - gerar o instalador (`npm run dist:win`)
-   - mostrar o resultado na pasta `dist/`
+## Automação no Windows (duplo clique)
+### 1) Abrir o app mais fácil
+- Dê duplo clique em `abrir-painel.bat`.
+- Se faltar dependência, ele instala e já abre o app.
 
-## Gerar `.exe` para Windows
-> Recomendado executar este passo em uma máquina Windows.
+### 2) Gerar instalador `.exe`
+- Dê duplo clique em `build.bat`.
+- O script faz tudo automaticamente:
+  - valida Node.js e npm
+  - instala dependências (`npm install`)
+  - gera o instalador (`npm run dist:win`)
+  - abre a pasta `dist/` no final
 
-1. Instale dependências:
-   ```bash
-   npm install
-   ```
-2. Gere o instalador:
-   ```bash
-   npm run dist:win
-   ```
-3. O arquivo `.exe` será criado na pasta `dist/`.
+## Gerar `.exe` manualmente (alternativa)
+> Recomendado executar em máquina Windows.
+
+```bash
+npm install
+npm run dist:win
+```
 
 ## Observações
 - O painel é local e não envia dados para servidor.
