@@ -6,10 +6,10 @@ Painel web para organizar o dia a dia de suporte remoto com atalhos, checklist, 
 - Atalhos rápidos para ferramentas e sites (com possibilidade de adicionar novos links).
 - Checklist personalizável para padronizar o atendimento.
 - Mensagens prontas com botão de cópia.
-- Ordem de serviço com data, cliente, serviço e valor cobrado.
+- Ordem de serviço com data, cliente, serviço, valor, forma de pagamento e status (Pago/Em aberto).
 - Histórico completo das OS salvo no `localStorage`.
 - Gestão de caixa com entradas e saídas.
-- Fechamento automático diário, semanal e mensal (ganhos, gastos e resultado).
+- Fechamento automático diário, semanal e mensal (ganhos, gastos e resultado), considerando OS pagas e destacando OS em aberto.
 
 ## Rodar no navegador (modo web)
 1. Abra `index.html` no navegador.

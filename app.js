@@ -25,6 +25,18 @@ const messageTemplates = [
   'Atendimento finalizado com sucesso. Se quiser, posso te enviar um resumo do que foi feito.'
 ];
 
+const PAYMENT_LABELS = {
+  pix: 'Pix',
+  dinheiro: 'Dinheiro',
+  cartao_debito: 'Cartão Débito',
+  cartao_credito: 'Cartão Crédito'
+};
+
+const STATUS_LABELS = {
+  pago: 'Pago',
+  em_aberto: 'Em aberto'
+};
+
 const todayIso = getTodayIso();
 
 const state = {
@@ -66,7 +78,9 @@ function migrateServiceOrders(orders) {
     ...order,
     id: order.id || crypto.randomUUID(),
     data: order.data || todayIso,
-    valor: Number(order.valor) || 0
+    valor: Number(order.valor) || 0,
+    pagamento: order.pagamento || 'pix',
+    status: order.status || 'pago'
   }));
 }
 
@@ -145,6 +159,8 @@ function renderServiceOrders() {
       <td>${order.cliente}</td>
       <td>${order.servico}</td>
       <td class="status-ok">${formatCurrency(order.valor)}</td>
+      <td>${PAYMENT_LABELS[order.pagamento] || order.pagamento}</td>
+      <td><span class="status-pill ${order.status === 'pago' ? 'status-paid' : 'status-open'}">${STATUS_LABELS[order.status] || order.status}</span></td>
       <td><button class="secondary" data-del-os="${order.id}">Excluir</button></td>
     `;
     serviceOrderTable.appendChild(tr);
@@ -195,9 +211,11 @@ function calculateCashSummary() {
 
   const result = {};
   Object.entries(periods).forEach(([key, config]) => {
-    const ganhosOS = state.serviceOrders
-      .filter((order) => config.match(order.data))
-      .reduce((sum, order) => sum + order.valor, 0);
+    const paidOrders = state.serviceOrders.filter((order) => config.match(order.data) && order.status === 'pago');
+    const openOrders = state.serviceOrders.filter((order) => config.match(order.data) && order.status === 'em_aberto');
+
+    const ganhosOS = paidOrders.reduce((sum, order) => sum + order.valor, 0);
+    const emAbertoOS = openOrders.reduce((sum, order) => sum + order.valor, 0);
 
     const extraEntradas = state.cashEntries
       .filter((entry) => config.match(entry.data) && entry.tipo === 'entrada')
@@ -213,7 +231,8 @@ function calculateCashSummary() {
       ganhos,
       gastos,
       lucro: ganhos - gastos,
-      os: ganhosOS,
+      osPagas: ganhosOS,
+      osAbertas: emAbertoOS,
       extras: extraEntradas
     };
   });
@@ -231,7 +250,8 @@ function renderCashSummary() {
     block.innerHTML = `
       <h4>${item.label}</h4>
       <p>Ganhos: <strong>${formatCurrency(item.ganhos)}</strong></p>
-      <p class="muted">↳ OS: ${formatCurrency(item.os)} | Entradas extras: ${formatCurrency(item.extras)}</p>
+      <p class="muted">↳ OS pagas: ${formatCurrency(item.osPagas)} | Entradas extras: ${formatCurrency(item.extras)}</p>
+      <p class="muted">↳ OS em aberto: ${formatCurrency(item.osAbertas)}</p>
       <p>Gastos: <strong class="text-danger">${formatCurrency(item.gastos)}</strong></p>
       <p>Resultado: <strong class="${item.lucro >= 0 ? 'status-ok' : 'text-danger'}">${formatCurrency(item.lucro)}</strong></p>
     `;
@@ -319,6 +339,8 @@ document.getElementById('serviceOrderForm').addEventListener('submit', (e) => {
   const cliente = document.getElementById('osClienteInput').value.trim();
   const servico = document.getElementById('osServicoInput').value.trim();
   const valor = Number(document.getElementById('osValorInput').value);
+  const pagamento = document.getElementById('osPagamentoInput').value;
+  const status = document.getElementById('osStatusInput').value;
   const data = document.getElementById('osDataInput').value;
 
   if (!cliente || !servico || !data || Number.isNaN(valor) || valor < 0) return;
@@ -328,6 +350,8 @@ document.getElementById('serviceOrderForm').addEventListener('submit', (e) => {
     cliente,
     servico,
     valor,
+    pagamento,
+    status,
     data
   });
 
@@ -335,6 +359,8 @@ document.getElementById('serviceOrderForm').addEventListener('submit', (e) => {
   renderFinance();
   e.target.reset();
   document.getElementById('osDataInput').value = todayIso;
+  document.getElementById('osPagamentoInput').value = 'pix';
+  document.getElementById('osStatusInput').value = 'pago';
 });
 
 serviceOrderTable.addEventListener('click', (e) => {
