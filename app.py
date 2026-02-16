@@ -9,7 +9,7 @@ from database import init_db, save_detection, search_articles
 from detector import DetectionResult, detect_adb_devices, detect_fastboot_devices, detect_usb_modes
 from updater import check_for_updates, download_update, is_update_repo_configured
 
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.2"
 UPDATE_REPO = "SEU_USUARIO/tech-vault-device-detector"
 BRAND_TABS = ["Samsung", "Motorola", "Xiaomi", "Realme"]
 
@@ -145,6 +145,7 @@ class DeviceDetectorApp(tk.Tk):
 
         self.update_button = ttk.Button(controls, text="⬆ Verificar atualização", command=self.check_updates_manual)
         self.update_button.pack(side=tk.LEFT, padx=4)
+        self._refresh_update_button_state()
 
         self.brand_var = tk.StringVar()
         self.model_var = tk.StringVar()
@@ -202,19 +203,24 @@ class DeviceDetectorApp(tk.Tk):
         self.kb_text.delete("1.0", tk.END)
         self.kb_text.insert(tk.END, content)
 
+    def _get_update_repo(self) -> str:
+        return UPDATE_REPO.strip()
+
+    def _refresh_update_button_state(self) -> None:
+        if is_update_repo_configured(self._get_update_repo()):
+            self.update_button.configure(text="⬆ Verificar atualização", state="normal")
+        else:
+            self.update_button.configure(text="⬆ Update desativado", state="disabled")
+
     def check_updates_on_startup(self) -> None:
-        if not is_update_repo_configured(UPDATE_REPO):
+        if not is_update_repo_configured(self._get_update_repo()):
             self.status_var.set("Update automático desativado (configure UPDATE_REPO no app.py).")
             return
         self._check_updates(interactive=False)
 
     def check_updates_manual(self) -> None:
-        if not is_update_repo_configured(UPDATE_REPO):
-            messagebox.showinfo(
-                "Atualização",
-                "Configuração pendente. Edite app.py e defina UPDATE_REPO = 'usuario/repositorio'.",
-            )
-            self.status_var.set("Update não configurado.")
+        if not is_update_repo_configured(self._get_update_repo()):
+            self.status_var.set("Update desativado: configure UPDATE_REPO no app.py para habilitar.")
             return
         self._check_updates(interactive=True)
 
@@ -222,7 +228,7 @@ class DeviceDetectorApp(tk.Tk):
         self.status_var.set("Verificando atualização...")
         self.update_idletasks()
 
-        info = check_for_updates(UPDATE_REPO, APP_VERSION)
+        info = check_for_updates(self._get_update_repo(), APP_VERSION)
 
         if info.error:
             self.status_var.set("Falha ao verificar atualização.")

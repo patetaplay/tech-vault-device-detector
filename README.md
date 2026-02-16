@@ -42,7 +42,7 @@ Dependendo do modo e da política do aparelho (Android mais novo, permissões, b
 ## Atualização automática do programa
 
 O app agora tem:
-- botão **⬆ Verificar atualização**
+- botão **⬆ Verificar atualização** (habilita quando UPDATE_REPO está configurado)
 - verificação automática ao iniciar
 - download automático da nova versão para a pasta `updates/`
 
@@ -63,7 +63,7 @@ Se aparecer **"Erro HTTP ao buscar update: 404"**, normalmente significa:
 
 Comportamento novo do app:
 - se `UPDATE_REPO` não estiver configurado, ele não tenta update automático no startup;
-- no clique manual de update, ele mostra instrução de configuração em vez de erro técnico.
+- botão de update fica desativado para não abrir popup de erro.
 
 ### Fluxo de update
 1. O app consulta `releases/latest` da API do GitHub.
