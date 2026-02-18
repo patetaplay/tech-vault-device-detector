@@ -16,10 +16,29 @@
   </header>
 
   <main class="container">
-    <section class="card">
+    <section class="card card-wide">
       <h2>Ferramentas Rápidas</h2>
       <div class="tool-grid" id="toolGrid"></div>
-      <button id="addToolBtn" class="secondary">+ Adicionar atalho</button>
+      <button id="addToolBtn" class="secondary">+ Adicionar atalho web</button>
+
+      <h3>Apps locais (.exe)</h3>
+      <form id="exeForm" class="ticket-form ticket-form-exe">
+        <input id="exeNomeInput" type="text" placeholder="Nome do app (ex: Unlock Tool)" required />
+        <input id="exeCaminhoInput" type="text" placeholder="Caminho completo (ex: C:\\Apps\\meuapp.exe)" required />
+        <button type="submit">Salvar app local</button>
+      </form>
+      <small id="exeHelpText">No app desktop (Electron), clique em “Abrir” para executar o .exe.</small>
+
+      <table>
+        <thead>
+          <tr>
+            <th>App</th>
+            <th>Caminho</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="exeTable"></tbody>
+      </table>
     </section>
 
     <section class="card">

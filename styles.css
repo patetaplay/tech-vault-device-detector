@@ -125,6 +125,19 @@ button:hover { border-color: var(--accent); }
   grid-template-columns: repeat(7, minmax(110px, 1fr));
 }
 
+.ticket-form-exe {
+  grid-template-columns: 1fr 2fr auto;
+  margin-top: .7rem;
+}
+.path-cell {
+  word-break: break-all;
+  color: #cbd5e1;
+}
+.action-row {
+  display: flex;
+  gap: .4rem;
+}
+
 .cash-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

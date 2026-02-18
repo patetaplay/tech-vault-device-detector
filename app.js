@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   tools: 'panel.tools',
   checklist: 'panel.checklist',
+  exeApps: 'panel.exeApps',
   serviceOrders: 'panel.serviceOrders',
   cashEntries: 'panel.cashEntries'
 };
@@ -42,6 +43,7 @@ const todayIso = getTodayIso();
 const state = {
   tools: load(STORAGE_KEYS.tools, defaultTools),
   checklist: load(STORAGE_KEYS.checklist, defaultChecklist),
+  exeApps: migrateExeApps(load(STORAGE_KEYS.exeApps, [])),
   serviceOrders: migrateServiceOrders(load(STORAGE_KEYS.serviceOrders, [])),
   cashEntries: load(STORAGE_KEYS.cashEntries, [])
 };
@@ -49,12 +51,18 @@ const state = {
 const toolGrid = document.getElementById('toolGrid');
 const checklistEl = document.getElementById('checklist');
 const templateList = document.getElementById('templateList');
+const exeTable = document.getElementById('exeTable');
+const exeHelpText = document.getElementById('exeHelpText');
 const serviceOrderTable = document.getElementById('serviceOrderTable');
 const cashTable = document.getElementById('cashTable');
 const cashSummary = document.getElementById('cashSummary');
 
 document.getElementById('osDataInput').value = todayIso;
 document.getElementById('cashDataInput').value = todayIso;
+
+if (!window.desktop?.openExe) {
+  exeHelpText.textContent = 'Modo navegador: o cadastro funciona, mas abrir .exe só está disponível no app desktop (Electron).';
+}
 
 function getTodayIso() {
   const now = new Date();
@@ -71,6 +79,14 @@ function load(key, fallback) {
   } catch {
     return structuredClone(fallback);
   }
+}
+
+function migrateExeApps(apps) {
+  return apps.map((app) => ({
+    id: app.id || crypto.randomUUID(),
+    nome: app.nome || 'App local',
+    caminho: app.caminho || ''
+  }));
 }
 
 function migrateServiceOrders(orders) {
@@ -97,6 +113,7 @@ function formatDate(value) {
 function persist() {
   localStorage.setItem(STORAGE_KEYS.tools, JSON.stringify(state.tools));
   localStorage.setItem(STORAGE_KEYS.checklist, JSON.stringify(state.checklist));
+  localStorage.setItem(STORAGE_KEYS.exeApps, JSON.stringify(state.exeApps));
   localStorage.setItem(STORAGE_KEYS.serviceOrders, JSON.stringify(state.serviceOrders));
   localStorage.setItem(STORAGE_KEYS.cashEntries, JSON.stringify(state.cashEntries));
 }
@@ -112,6 +129,38 @@ function renderTools() {
     a.textContent = tool.name;
     toolGrid.appendChild(a);
   });
+}
+
+function renderExeApps() {
+  exeTable.innerHTML = '';
+
+  state.exeApps.forEach((app) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${app.nome}</td>
+      <td class="path-cell">${app.caminho}</td>
+      <td class="action-row">
+        <button class="secondary" data-open-exe="${app.id}">Abrir</button>
+        <button class="secondary" data-del-exe="${app.id}">Excluir</button>
+      </td>
+    `;
+    exeTable.appendChild(tr);
+  });
+}
+
+async function openExeApp(id) {
+  const app = state.exeApps.find((item) => item.id === id);
+  if (!app) return;
+
+  if (!window.desktop?.openExe) {
+    alert('Para abrir .exe, use este painel no aplicativo desktop (Electron).');
+    return;
+  }
+
+  const result = await window.desktop.openExe(app.caminho);
+  if (!result?.ok) {
+    alert(`Não foi possível abrir o executável.\n${result?.error || 'Erro desconhecido.'}`);
+  }
 }
 
 function renderChecklist() {
@@ -308,6 +357,34 @@ document.getElementById('toolForm').addEventListener('submit', (e) => {
   document.getElementById('toolDialog').close();
 });
 
+document.getElementById('exeForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const nome = document.getElementById('exeNomeInput').value.trim();
+  const caminho = document.getElementById('exeCaminhoInput').value.trim();
+  if (!nome || !caminho) return;
+
+  state.exeApps.unshift({ id: crypto.randomUUID(), nome, caminho });
+  persist();
+  renderExeApps();
+  e.target.reset();
+});
+
+exeTable.addEventListener('click', async (e) => {
+  const idOpen = e.target.getAttribute('data-open-exe');
+  const idDelete = e.target.getAttribute('data-del-exe');
+
+  if (idOpen) {
+    await openExeApp(idOpen);
+    return;
+  }
+
+  if (idDelete) {
+    state.exeApps = state.exeApps.filter((item) => item.id !== idDelete);
+    persist();
+    renderExeApps();
+  }
+});
+
 document.getElementById('addTaskBtn').addEventListener('click', () => {
   const input = document.getElementById('newTaskInput');
   const text = input.value.trim();
@@ -406,6 +483,7 @@ cashTable.addEventListener('click', (e) => {
 updateClock();
 setInterval(updateClock, 1000);
 renderTools();
+renderExeApps();
 renderChecklist();
 renderTemplates();
 renderFinance();
