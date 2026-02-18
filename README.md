@@ -3,7 +3,7 @@
 Painel web para organizar o dia a dia de suporte remoto com atalhos, checklist, mensagens prontas, ordens de serviço e gestão de caixa.
 
 ## Funcionalidades
-- Atalhos rápidos para ferramentas e sites (com possibilidade de adicionar novos links).
+- Atalhos rápidos para ferramentas e sites com botão **Editar atalhos** para adicionar e remover links.
 - Cadastro de apps locais (.exe) na aba Ferramentas para abrir direto no app desktop (Electron).
 - Checklist personalizável para padronizar o atendimento.
 - Mensagens prontas com botão de cópia.

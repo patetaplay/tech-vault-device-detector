@@ -49,6 +49,8 @@ const state = {
 };
 
 const toolGrid = document.getElementById('toolGrid');
+const toolEditor = document.getElementById('toolEditor');
+const toolManageList = document.getElementById('toolManageList');
 const checklistEl = document.getElementById('checklist');
 const templateList = document.getElementById('templateList');
 const exeTable = document.getElementById('exeTable');
@@ -128,6 +130,20 @@ function renderTools() {
     a.className = 'tool-btn';
     a.textContent = tool.name;
     toolGrid.appendChild(a);
+  });
+}
+
+
+function renderToolManager() {
+  toolManageList.innerHTML = '';
+  state.tools.forEach((tool, index) => {
+    const li = document.createElement('li');
+    li.className = 'manage-item';
+    li.innerHTML = `
+      <span><strong>${tool.name}</strong><br /><small>${tool.url}</small></span>
+      <button class="secondary" data-del-tool="${index}">Remover</button>
+    `;
+    toolManageList.appendChild(li);
   });
 }
 
@@ -341,20 +357,39 @@ function updateClock() {
   });
 }
 
+
 document.getElementById('addToolBtn').addEventListener('click', () => {
-  document.getElementById('toolDialog').showModal();
+  toolEditor.classList.remove('hidden');
+  document.getElementById('toolNameInline').focus();
 });
 
-document.getElementById('toolForm').addEventListener('submit', (e) => {
+document.getElementById('editToolsBtn').addEventListener('click', () => {
+  toolEditor.classList.toggle('hidden');
+  if (!toolEditor.classList.contains('hidden')) {
+    renderToolManager();
+  }
+});
+
+document.getElementById('toolInlineForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  const name = document.getElementById('toolName').value.trim();
-  const url = document.getElementById('toolUrl').value.trim();
+  const name = document.getElementById('toolNameInline').value.trim();
+  const url = document.getElementById('toolUrlInline').value.trim();
   if (!name || !url) return;
+
   state.tools.push({ name, url });
   persist();
   renderTools();
+  renderToolManager();
   e.target.reset();
-  document.getElementById('toolDialog').close();
+});
+
+toolManageList.addEventListener('click', (e) => {
+  const index = e.target.getAttribute('data-del-tool');
+  if (index === null) return;
+  state.tools.splice(Number(index), 1);
+  persist();
+  renderTools();
+  renderToolManager();
 });
 
 document.getElementById('exeForm').addEventListener('submit', (e) => {
@@ -483,6 +518,7 @@ cashTable.addEventListener('click', (e) => {
 updateClock();
 setInterval(updateClock, 1000);
 renderTools();
+renderToolManager();
 renderExeApps();
 renderChecklist();
 renderTemplates();

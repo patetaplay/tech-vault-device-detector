@@ -125,6 +125,42 @@ button:hover { border-color: var(--accent); }
   grid-template-columns: repeat(7, minmax(110px, 1fr));
 }
 
+
+.tool-actions {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: .7rem;
+}
+.tool-editor {
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: .7rem;
+  margin-bottom: 1rem;
+  background: rgba(15, 23, 42, .7);
+}
+.hidden { display: none; }
+.ticket-form-inline-tool {
+  grid-template-columns: 1fr 2fr auto;
+  margin-bottom: .65rem;
+}
+.manage-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: .45rem;
+}
+.manage-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .6rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: .5rem .6rem;
+}
+.manage-item small { color: var(--muted); }
+
 .ticket-form-exe {
   grid-template-columns: 1fr 2fr auto;
   margin-top: .7rem;
