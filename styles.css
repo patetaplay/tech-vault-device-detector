@@ -49,6 +49,30 @@ body {
 }
 .card h2 { margin-top: 0; font-size: 1.1rem; }
 
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  padding: .8rem;
+}
+.tab-btn {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: var(--muted);
+}
+.tab-btn.active {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, .3);
+}
+.tab-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 1rem;
+}
+
 .tool-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

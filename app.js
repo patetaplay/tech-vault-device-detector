@@ -58,6 +58,8 @@ const exeHelpText = document.getElementById('exeHelpText');
 const serviceOrderTable = document.getElementById('serviceOrderTable');
 const cashTable = document.getElementById('cashTable');
 const cashSummary = document.getElementById('cashSummary');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
 
 document.getElementById('osDataInput').value = todayIso;
 document.getElementById('cashDataInput').value = todayIso;
@@ -347,6 +349,19 @@ function renderFinance() {
   renderCashSummary();
 }
 
+
+function switchTab(tabName) {
+  tabButtons.forEach((btn) => {
+    const active = btn.getAttribute('data-tab') === tabName;
+    btn.classList.toggle('active', active);
+  });
+
+  tabPanels.forEach((panel) => {
+    const active = panel.getAttribute('data-tab-panel') === tabName;
+    panel.classList.toggle('hidden', !active);
+  });
+}
+
 function updateClock() {
   const clock = document.getElementById('clock');
   const now = new Date();
@@ -357,6 +372,13 @@ function updateClock() {
   });
 }
 
+
+
+tabButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    switchTab(btn.getAttribute('data-tab'));
+  });
+});
 
 document.getElementById('addToolBtn').addEventListener('click', () => {
   toolEditor.classList.remove('hidden');
@@ -523,4 +545,5 @@ renderExeApps();
 renderChecklist();
 renderTemplates();
 renderFinance();
+switchTab('ferramentas');
 persist();
