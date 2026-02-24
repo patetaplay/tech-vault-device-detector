@@ -63,6 +63,8 @@ Depois disso, ele:
 
 > **Importante:** se você der duplo clique e a janela fechar, agora o script fica parado no final com `Pressione qualquer tecla...` e gera log em `alextec-bootstrap.log` na raiz do projeto.
 >
+> Também ajustamos o script para máxima compatibilidade do CMD no Windows (evitando encadeamentos `call :label || ...`, que podem falhar em alguns ambientes).
+>
 > Para garantir que o terminal fique aberto durante toda a execução, você também pode rodar assim no Windows:
 > ```bat
 > cmd /k start-alextec.bat

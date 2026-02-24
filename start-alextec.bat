@@ -49,13 +49,20 @@ exit /b 1
 call :log "Iniciando diagnostico de pre-requisitos..."
 call :detect_pkg_manager
 
-call :ensure_or_install_docker || exit /b 1
-call :ensure_or_install_node || exit /b 1
-call :ensure_command npm || (
+call :ensure_or_install_docker
+if errorlevel 1 exit /b 1
+
+call :ensure_or_install_node
+if errorlevel 1 exit /b 1
+
+call :ensure_command npm
+if errorlevel 1 (
   call :log "npm nao encontrado no PATH apos instalacao. Reabra o terminal e tente novamente."
   exit /b 1
 )
-call :ensure_command npx || (
+
+call :ensure_command npx
+if errorlevel 1 (
   call :log "npx nao encontrado no PATH apos instalacao. Reabra o terminal e tente novamente."
   exit /b 1
 )
@@ -64,11 +71,14 @@ goto :run_mode
 
 :run_mode
 call :log "Validando comandos necessarios..."
-call :ensure_command docker || (
+call :ensure_command docker
+if errorlevel 1 (
   call :log "Docker nao encontrado no PATH. Rode a opcao 1 para tentar instalar automaticamente."
   exit /b 1
 )
-call :ensure_command npm || (
+
+call :ensure_command npm
+if errorlevel 1 (
   call :log "npm nao encontrado no PATH. Rode a opcao 1 para tentar instalar automaticamente."
   exit /b 1
 )
@@ -83,11 +93,16 @@ if not exist ".env" (
   )
 )
 
-call :run_step "[1/6] Subindo PostgreSQL no Docker..." "docker compose up -d" || exit /b 1
-call :run_step "[2/6] Instalando dependencias..." "npm install" || exit /b 1
-call :run_step "[3/6] Gerando cliente Prisma..." "npx prisma generate" || exit /b 1
-call :run_step "[4/6] Executando migrations..." "npx prisma migrate dev" || exit /b 1
-call :run_step "[5/6] Executando seed..." "npx prisma db seed" || exit /b 1
+call :run_step "[1/6] Subindo PostgreSQL no Docker..." "docker compose up -d"
+if errorlevel 1 exit /b 1
+call :run_step "[2/6] Instalando dependencias..." "npm install"
+if errorlevel 1 exit /b 1
+call :run_step "[3/6] Gerando cliente Prisma..." "npx prisma generate"
+if errorlevel 1 exit /b 1
+call :run_step "[4/6] Executando migrations..." "npx prisma migrate dev"
+if errorlevel 1 exit /b 1
+call :run_step "[5/6] Executando seed..." "npx prisma db seed"
+if errorlevel 1 exit /b 1
 
 call :log "[6/6] Abrindo navegador e iniciando app..."
 start "" http://localhost:3000
