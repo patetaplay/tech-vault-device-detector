@@ -61,6 +61,13 @@ Depois disso, ele:
 4. Executa `prisma generate`, migrations e seed
 5. Abre `http://localhost:3000` e inicia `npm run dev`
 
+> **Importante:** se você der duplo clique e a janela fechar, agora o script fica parado no final com `Pressione qualquer tecla...` e gera log em `alextec-bootstrap.log` na raiz do projeto.
+>
+> Para garantir que o terminal fique aberto durante toda a execução, você também pode rodar assim no Windows:
+> ```bat
+> cmd /k start-alextec.bat
+> ```
+
 ## Scripts
 - `npm run dev`
 - `npm run build`
