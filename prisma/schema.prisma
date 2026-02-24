@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ATENDENTE
+  TECNICO
+}
+
+enum ServiceOrderStatus {
+  RECEBIDO
+  ORCAMENTO
+  AGUARDANDO_PECA
+  EM_MANUTENCAO
+  PRONTO
+  ENTREGUE
+  CANCELADO
+}
+
+enum MovementType {
+  ENTRADA
+  SAIDA
+}
+
+enum CashType {
+  ENTRADA
+  SAIDA
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(TECNICO)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  serviceOrders ServiceOrder[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Client {
+  id            String         @id @default(cuid())
+  name          String
+  phone         String
+  email         String?
+  document      String?
+  address       String?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  serviceOrders ServiceOrder[]
+}
+
+model ServiceOrder {
+  id               String             @id @default(cuid())
+  number           Int                @unique @default(autoincrement())
+  status           ServiceOrderStatus @default(RECEBIDO)
+  clientId         String
+  brand            String
+  model            String
+  serial           String?
+  reportedIssue    String
+  diagnosis        String?
+  executedServices String?
+  usedParts        String?
+  laborCost        Decimal            @default(0) @db.Decimal(10, 2)
+  partsCost        Decimal            @default(0) @db.Decimal(10, 2)
+  discount         Decimal            @default(0) @db.Decimal(10, 2)
+  total            Decimal            @default(0) @db.Decimal(10, 2)
+  paymentMethod    String?
+  warrantyDays     Int                @default(90)
+  technicianId     String?
+  openedAt         DateTime           @default(now())
+  closedAt         DateTime?
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  client           Client             @relation(fields: [clientId], references: [id])
+  technician       User?              @relation(fields: [technicianId], references: [id])
+  statusHistory    StatusHistory[]
+  movements        InventoryMovement[]
+  cashEntries      CashEntry[]
+}
+
+model StatusHistory {
+  id             String             @id @default(cuid())
+  serviceOrderId String
+  fromStatus     ServiceOrderStatus?
+  toStatus       ServiceOrderStatus
+  changedAt      DateTime           @default(now())
+  note           String?
+  serviceOrder   ServiceOrder       @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id           String              @id @default(cuid())
+  name         String
+  sku          String              @unique
+  quantity     Int                 @default(0)
+  minQuantity  Int                 @default(0)
+  costPrice    Decimal             @default(0) @db.Decimal(10, 2)
+  salePrice    Decimal             @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  movements    InventoryMovement[]
+}
+
+model InventoryMovement {
+  id             String       @id @default(cuid())
+  productId      String
+  type           MovementType
+  quantity       Int
+  note           String?
+  serviceOrderId String?
+  createdAt      DateTime     @default(now())
+  product        Product      @relation(fields: [productId], references: [id])
+  serviceOrder   ServiceOrder? @relation(fields: [serviceOrderId], references: [id])
+}
+
+model CashEntry {
+  id             String       @id @default(cuid())
+  type           CashType
+  description    String
+  amount         Decimal      @db.Decimal(10, 2)
+  serviceOrderId String?
+  createdAt      DateTime     @default(now())
+  serviceOrder   ServiceOrder? @relation(fields: [serviceOrderId], references: [id])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

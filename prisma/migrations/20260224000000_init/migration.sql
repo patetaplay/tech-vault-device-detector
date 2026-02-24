@@ -1,0 +1,27 @@
+-- Generated baseline SQL for initial schema
+CREATE TYPE "Role" AS ENUM ('ADMIN', 'ATENDENTE', 'TECNICO');
+CREATE TYPE "ServiceOrderStatus" AS ENUM ('RECEBIDO', 'ORCAMENTO', 'AGUARDANDO_PECA', 'EM_MANUTENCAO', 'PRONTO', 'ENTREGUE', 'CANCELADO');
+CREATE TYPE "MovementType" AS ENUM ('ENTRADA', 'SAIDA');
+CREATE TYPE "CashType" AS ENUM ('ENTRADA', 'SAIDA');
+
+CREATE TABLE "User" (
+  "id" TEXT PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "email" TEXT NOT NULL UNIQUE,
+  "password" TEXT NOT NULL,
+  "role" "Role" NOT NULL DEFAULT 'TECNICO',
+  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP NOT NULL
+);
+
+CREATE TABLE "Client" (
+  "id" TEXT PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "phone" TEXT NOT NULL,
+  "email" TEXT,
+  "document" TEXT,
+  "address" TEXT,
+  "notes" TEXT,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP NOT NULL
+);
