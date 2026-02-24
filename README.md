@@ -65,6 +65,11 @@ Depois disso, ele:
 >
 > Também ajustamos o script para máxima compatibilidade do CMD no Windows (evitando encadeamentos `call :label || ...`, que podem falhar em alguns ambientes).
 >
+
+> Se aparecer `Node detectado`, mas `npm nao encontrado no PATH`, o script agora tenta automaticamente:
+> 1) reparar PATH para `%ProgramFiles%\nodejs`
+> 2) reinstalar Node LTS via gerenciador (`winget/choco`) para recuperar `npm`/`npx`
+>
 > Para garantir que o terminal fique aberto durante toda a execução, você também pode rodar assim no Windows:
 > ```bat
 > cmd /k start-alextec.bat

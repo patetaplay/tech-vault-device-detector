@@ -55,17 +55,8 @@ if errorlevel 1 exit /b 1
 call :ensure_or_install_node
 if errorlevel 1 exit /b 1
 
-call :ensure_command npm
-if errorlevel 1 (
-  call :log "npm nao encontrado no PATH apos instalacao. Reabra o terminal e tente novamente."
-  exit /b 1
-)
-
-call :ensure_command npx
-if errorlevel 1 (
-  call :log "npx nao encontrado no PATH apos instalacao. Reabra o terminal e tente novamente."
-  exit /b 1
-)
+call :ensure_or_repair_npm_npx
+if errorlevel 1 exit /b 1
 
 goto :run_mode
 
@@ -195,6 +186,74 @@ if "%PKG_MANAGER%"=="choco" (
 )
 
 call :log "Instale Docker manualmente: https://www.docker.com/products/docker-desktop/"
+exit /b 1
+
+
+:ensure_or_repair_npm_npx
+call :ensure_command npm
+if errorlevel 1 (
+  call :log "npm nao encontrado no PATH. Tentando reparar PATH do Node..."
+  call :repair_node_path
+)
+
+call :ensure_command npm
+if errorlevel 1 (
+  call :log "npm ainda nao encontrado. Tentando reparar instalacao do Node..."
+  call :reinstall_node_tools
+  if errorlevel 1 exit /b 1
+)
+
+call :ensure_command npx
+if errorlevel 1 (
+  call :log "npx nao encontrado. Tentando reparar PATH do Node..."
+  call :repair_node_path
+)
+
+call :ensure_command npx
+if errorlevel 1 (
+  call :log "npx ainda nao encontrado apos reparo. Reabra o terminal e execute novamente."
+  exit /b 1
+)
+
+call :log "npm/npx detectados com sucesso."
+exit /b 0
+
+:repair_node_path
+if exist "%ProgramFiles%\nodejs\npm.cmd" (
+  set "PATH=%ProgramFiles%\nodejs;%PATH%"
+  call :log "PATH atualizado com %ProgramFiles%\nodejs"
+  exit /b 0
+)
+if exist "%ProgramFiles(x86)%\nodejs\npm.cmd" (
+  set "PATH=%ProgramFiles(x86)%\nodejs;%PATH%"
+  call :log "PATH atualizado com %ProgramFiles(x86)%\nodejs"
+  exit /b 0
+)
+call :log "Pasta padrao do Node nao encontrada para reparar PATH."
+exit /b 1
+
+:reinstall_node_tools
+if "%PKG_MANAGER%"=="winget" (
+  call :log "Reinstalando Node.js LTS via winget para recuperar npm/npx..."
+  winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    call :log "Falha ao reinstalar Node.js via winget"
+    exit /b 1
+  )
+  call :repair_node_path
+  exit /b 0
+)
+if "%PKG_MANAGER%"=="choco" (
+  call :log "Reinstalando Node.js LTS via choco para recuperar npm/npx..."
+  choco install nodejs-lts -y >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    call :log "Falha ao reinstalar Node.js via choco"
+    exit /b 1
+  )
+  call :repair_node_path
+  exit /b 0
+)
+call :log "Sem gerenciador de pacotes para reparar npm/npx automaticamente."
 exit /b 1
 
 :ensure_command
