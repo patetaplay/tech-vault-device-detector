@@ -39,6 +39,20 @@ Usuário admin seed:
 - email: `admin@alextec.local`
 - senha: `Admin@123`
 
+
+## Atalho para Windows (.bat)
+Para subir tudo e abrir o site automaticamente no Windows, execute:
+```bat
+start-alextec.bat
+```
+
+O script faz:
+1. Cria `.env` a partir de `.env.example` (se nao existir)
+2. Sobe o PostgreSQL com Docker
+3. Instala dependencias
+4. Executa `prisma generate`, migrations e seed
+5. Abre `http://localhost:3000` e inicia `npm run dev`
+
 ## Scripts
 - `npm run dev`
 - `npm run build`
