@@ -46,10 +46,18 @@ Para subir tudo e abrir o site automaticamente no Windows, execute:
 start-alextec.bat
 ```
 
-O script faz:
+Ao iniciar, o script oferece 2 modos:
+1. **Diagnosticar e instalar pre-requisitos** (modo recomendado na primeira execução)
+2. **Apenas iniciar projeto**
+
+No modo de diagnóstico, ele tenta detectar e instalar automaticamente o que falta usando `winget` (ou `choco` como fallback):
+- Docker Desktop
+- Node.js LTS (inclui npm/npx)
+
+Depois disso, ele:
 1. Cria `.env` a partir de `.env.example` (se nao existir)
 2. Sobe o PostgreSQL com Docker
-3. Instala dependencias
+3. Instala dependências do projeto
 4. Executa `prisma generate`, migrations e seed
 5. Abre `http://localhost:3000` e inicia `npm run dev`
 
