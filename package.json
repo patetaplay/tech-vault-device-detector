@@ -1,0 +1,12 @@
+{
+  "name": "tech-vault-device-detector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "npm run build && node server.js",
+    "start": "node server.js",
+    "test": "npm run build && node --test test/*.test.mjs"
+  }
+}
